@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Account Recovery — BlindBit{% endblock %}
+{% block content_public %}
+<div class="min-h-[calc(100vh-68px)] flex items-center justify-center px-4 py-12">
+  <div class="w-full max-w-md">
+    <div class="bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] p-8 sm:p-10 shadow-brutal">
+      <h1 class="text-2xl font-bold mb-1">Recover Account</h1>
+      <p class="text-sm text-gray-500 mb-8">Enter your 40-character recovery code (XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX).</p>
+
+      <form id="recovery-form" class="space-y-5">
+        {% csrf_token %}
+        <div>
+          <label for="username" class="font-mono font-bold text-xs uppercase block mb-1.5">Username</label>
+          <input type="text" id="username" name="username" required placeholder="alice"
+            class="w-full px-3.5 py-3 bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] text-sm outline-none focus:shadow-[3px_3px_0_#1B4DFF] focus:-translate-x-[1.5px] focus:-translate-y-[1.5px] transition-all" />
+        </div>
+        <div>
+          <label for="recovery-code" class="font-mono font-bold text-xs uppercase block mb-1.5">Recovery Code</label>
+          <input type="text" id="recovery-code" inputmode="text" autocomplete="off"
+            placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+            class="w-full px-3.5 py-3 bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] text-sm outline-none focus:shadow-[3px_3px_0_#1B4DFF] focus:-translate-x-[1.5px] focus:-translate-y-[1.5px] transition-all font-mono tracking-widest" />
+        </div>
+
+        <button type="submit"
+          class="w-full font-mono font-bold text-xs tracking-wider uppercase bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2">
+          Recover Account
+        </button>
+      </form>
+
+      <div id="error-msg" class="mt-4 text-red-600 text-sm hidden"></div>
+    </div>
+
+    <p class="text-center text-sm text-gray-500 mt-6">
+      Remember your password?
+      <a href="{% url 'accounts:login' %}" class="font-bold text-[#0A0A0A] underline hover:text-[#1B4DFF]">Sign In</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('recovery-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('error-msg');
+  errorEl.classList.add('hidden');
+
+  const username = document.getElementById('username').value.trim();
+  const code = document.getElementById('recovery-code').value.trim().toUpperCase();
+
+  if (!username || !code) {
+    errorEl.textContent = 'Please enter your username and recovery code.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  var codePattern = /^[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}$/;
+  if (!codePattern.test(code)) {
+    errorEl.textContent = 'Please enter a valid 40-character recovery code (format: XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX).';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    var recoverySalt = new TextEncoder().encode('BlindBit recovery key derivation');
+    var recoveryKey = await BlindBitCrypto.deriveKeyFromPassphrase(code, recoverySalt);
+
+    var resp = await fetch('{% url "accounts:login_begin" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({ username }),
+    });
+    var data = await resp.json();
+
+    if (data.error) {
+      errorEl.textContent = data.error;
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    if (data.is_onboarded && data.allowCredentials && data.allowCredentials.length > 0) {
+      data.challenge = b642ab(data.challenge);
+      data.allowCredentials.forEach(function(cred) { cred.id = b642ab(cred.id); });
+
+      var assertion = await navigator.credentials.get({ publicKey: data });
+      var assertResp = assertion.response;
+      var credPayload = {
+        id: assertion.id, raw_id: ab2b64(assertion.rawId),
+        response: {
+          client_data_json: ab2b64(assertResp.clientDataJSON),
+          authenticator_data: ab2b64(assertResp.authenticatorData),
+          signature: ab2b64(assertResp.signature),
+          user_handle: assertResp.userHandle ? ab2b64(assertResp.userHandle) : null,
+        },
+      };
+      var completeResp = await fetch('{% url "accounts:login_complete" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ credential: credPayload }),
+      });
+      var completeData = await completeResp.json();
+      if (completeData.status === 'ok') {
+        var rawMk = await crypto.subtle.exportKey('raw', recoveryKey);
+        sessionStorage.setItem('blindbit_master_key_raw', btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))));
+        window.location.href = '{% url "vault:dashboard" %}';
+        return;
+      }
+    }
+
+    errorEl.textContent = 'Recovery requires the original device passkey. Please sign in on your original device.';
+    errorEl.classList.remove('hidden');
+  } catch (err) {
+    errorEl.textContent = 'Recovery failed: ' + err.message;
+    errorEl.classList.remove('hidden');
+  }
+});
+
+function b642ab(b64) {
+  b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); });
+}
+function ab2b64(ab) {
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(ab)));
+}
+</script>
+{% endblock %}
