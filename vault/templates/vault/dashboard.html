@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}My Vault — BlindBit{% endblock %}
+{% block content_app %}
+<div class="p-6 sm:p-8 lg:p-10 max-w-5xl">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-2xl font-bold">My Vault</h1>
+      <p class="text-sm text-gray-500 mt-0.5">Your files are locked and only you can open them.</p>
+    </div>
+    <a href="{% url 'vault:upload' %}" class="flex items-center gap-2 font-mono font-bold text-xs tracking-wider uppercase no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">
+      <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Upload
+    </a>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    <div class="bg-white border-[2.5px] border-[#0A0A0A] p-5 shadow-brutal">
+      <div class="flex items-center gap-3 mb-1">
+        <svg class="w-5 h-5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        <p class="text-xs font-mono font-bold uppercase text-gray-400">Your Files</p>
+      </div>
+      <p class="text-2xl font-bold" id="file-count">{{ files|length }}</p>
+    </div>
+    <div class="bg-white border-[2.5px] border-[#0A0A0A] p-5 shadow-brutal">
+      <div class="flex items-center gap-3 mb-1">
+        <svg class="w-5 h-5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <p class="text-xs font-mono font-bold uppercase text-gray-400">Shared With You</p>
+      </div>
+      <p class="text-2xl font-bold">{{ shared_files|length }}</p>
+    </div>
+    <div class="bg-white border-[2.5px] border-[#0A0A0A] p-5 shadow-brutal">
+      <div class="flex items-center gap-3 mb-1">
+        <svg class="w-5 h-5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <p class="text-xs font-mono font-bold uppercase text-gray-400">Status</p>
+      </div>
+      <p class="text-2xl font-bold text-green-600">Secure</p>
+    </div>
+  </div>
+
+  <!-- My Files -->
+  <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal">
+    <div class="border-b-[2.5px] border-[#0A0A0A] px-5 py-4 flex items-center justify-between">
+      <h2 class="font-bold">My Files</h2>
+      {% if files %}
+      <span class="text-xs text-gray-400 font-mono">{{ files|length }} file{{ files|length|pluralize }}</span>
+      {% endif %}
+    </div>
+
+    {% if files %}
+    <div class="divide-y-[2.5px] divide-[#0A0A0A]">
+      {% for file in files %}
+      <div class="flex items-center justify-between p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors">
+        <div class="flex items-center gap-3 min-w-0 flex-1">
+          <div class="w-9 h-9 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center flex-shrink-0">
+            <svg class="w-4.5 h-4.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          </div>
+          <div class="min-w-0">
+            <p class="font-semibold truncate encrypted-filename" data-encrypted="{{ file.encrypted_filename }}">Protected file</p>
+            <p class="text-xs text-gray-400">
+              {{ file.original_size|filesizeformat }} · {{ file.uploaded_at|date:"M j, Y" }}
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0 ml-3">
+          <button data-download-btn="{{ file.id }}" onclick="decryptAndDownload('{{ file.id }}')" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-3 py-1.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center gap-1.5 cursor-pointer">
+            <svg class="w-3.5 h-3.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Open
+          </button>
+          <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs uppercase no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-3 py-1.5 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all">Share</a>
+          <form method="post" action="{% url 'vault:delete' file.id %}" onsubmit="return confirm('Delete this file permanently?')" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="font-mono font-bold text-xs uppercase text-red-500 bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-red-700">Delete</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="p-12 text-center">
+      <div class="w-16 h-16 mx-auto mb-4 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
+        <svg class="w-8 h-8 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      </div>
+      <p class="text-gray-500 mb-1">Your vault is empty</p>
+      <p class="text-sm text-gray-400">Upload your first file to get started.</p>
+      <a href="{% url 'vault:upload' %}" class="inline-flex items-center gap-2 mt-5 font-mono font-bold text-xs tracking-wider uppercase no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Upload File</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Shared with me -->
+  {% if shared_files %}
+  <div class="mt-8">
+    <h2 class="font-bold text-lg mb-4">Shared With You</h2>
+    <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal divide-y-[2.5px] divide-[#0A0A0A]">
+      {% for share in shared_files %}
+      <div class="flex items-center justify-between p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors">
+        <div class="flex items-center gap-3 min-w-0 flex-1">
+          <div class="w-9 h-9 bg-[#1B4DFF] border-[2.5px] border-[#0A0A0A] flex items-center justify-center flex-shrink-0">
+            <svg class="w-4.5 h-4.5 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="min-w-0">
+            <p class="font-semibold truncate">Shared by <span class="text-[#1B4DFF]">{{ share.owner.username }}</span></p>
+            <p class="text-xs text-gray-400">{{ share.created_at|date:"M j, Y" }}</p>
+          </div>
+        </div>
+        <button data-download-btn="{{ share.file.id }}" onclick="decryptAndDownload('{{ share.file.id }}')" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-3 py-1.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex-shrink-0 ml-3 cursor-pointer">Open</button>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.querySelectorAll('.encrypted-filename').forEach(el => {
+  const encrypted = el.dataset.encrypted;
+  if (encrypted) {
+    try {
+      const decoded = atob(encrypted);
+      el.textContent = decoded.length < 100 ? decoded : 'Protected file';
+    } catch {
+      el.textContent = 'Protected file';
+    }
+  }
+});
+</script>
+{% endblock %}

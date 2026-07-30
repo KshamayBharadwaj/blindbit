@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}File Details — BlindBit{% endblock %}
+{% block content_app %}
+<div class="p-6 sm:p-8 lg:p-10 max-w-3xl">
+  <div class="bg-white border-[2.5px] border-[#0A0A0A] p-8 shadow-brutal">
+    <h1 class="text-2xl font-bold mb-1">File Details</h1>
+    <p class="text-xs font-mono text-gray-400 mb-6">ID: {{ file.id }}</p>
+
+    <div class="grid grid-cols-2 gap-4 mb-6">
+      <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
+        <p class="text-xs font-mono font-bold uppercase text-gray-500">Size</p>
+        <p class="font-semibold">{{ file.original_size|filesizeformat }}</p>
+      </div>
+      <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
+        <p class="text-xs font-mono font-bold uppercase text-gray-500">Type</p>
+        <p class="font-semibold truncate">{{ file.mime_type }}</p>
+      </div>
+      <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
+        <p class="text-xs font-mono font-bold uppercase text-gray-500">Uploaded</p>
+        <p class="font-semibold">{{ file.uploaded_at|date:"M j, Y g:i A" }}</p>
+      </div>
+      <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
+        <p class="text-xs font-mono font-bold uppercase text-gray-500">Security</p>
+        <p class="font-semibold text-green-600">Locked & Secure</p>
+      </div>
+    </div>
+
+    <div class="flex gap-3">
+      <button data-download-btn="{{ file.id }}" onclick="decryptAndDownload('{{ file.id }}')" class="font-mono font-bold text-xs tracking-wider uppercase no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-6 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Open & Unlock</button>
+      <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-6 py-3 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all">Share</a>
+    </div>
+  </div>
+
+  <!-- Shares list -->
+  <div class="mt-8">
+    <h2 class="font-bold text-lg mb-4">Shared With</h2>
+    {% if shares %}
+    <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal divide-y-[2.5px] divide-[#0A0A0A]">
+      {% for share in shares %}
+      <div class="flex items-center justify-between p-4 hover:bg-[#F8F8F5] transition-colors">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
+            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          </div>
+          <div>
+            <p class="font-semibold">{{ share.recipient.username }}</p>
+            <p class="text-xs text-gray-400">{{ share.created_at|date:"M j, Y" }}</p>
+          </div>
+        </div>
+        {% if share.revoked %}
+          <span class="text-xs font-mono font-bold uppercase text-red-500">Revoked</span>
+        {% else %}
+          <form method="post" action="{% url 'sharing:revoke_share' share.id %}" onsubmit="return confirm('Revoke access for {{ share.recipient.username }}? This will require re-encrypting the file.')">
+            {% csrf_token %}
+            <button type="submit" class="font-mono font-bold text-xs uppercase text-red-500 bg-transparent border-0 cursor-pointer px-3 py-1.5 hover:text-red-700">Revoke</button>
+          </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-400">Not shared with anyone yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
