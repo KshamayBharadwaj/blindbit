@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+{% block title %}Devices — BlindBit{% endblock %}
+{% block content_app %}
+<div class="p-6 sm:p-8 lg:p-10 max-w-4xl">
+  <div class="mb-8 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold">Trusted Devices</h1>
+      <p class="text-sm text-gray-500 mt-0.5">Devices that can unlock your vault.</p>
+    </div>
+    <button onclick="openAddDeviceModal()"
+      class="font-mono font-bold text-xs tracking-wider uppercase bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center gap-2">
+      <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Device
+    </button>
+  </div>
+
+  {% if devices %}
+  <div class="grid gap-4">
+    {% for device in devices %}
+    <div class="bg-white border-2 border-blindbit-black shadow-brutal p-5 flex items-center justify-between hover:bg-[#F8F8F5] transition-colors">
+      <div class="flex items-center gap-5">
+        <div class="w-14 h-14 bg-blindbit-black flex items-center justify-center shrink-0">
+          {% if "Android" in device.name or "iOS" in device.name or "iPhone" in device.name or "iPad" in device.name or "Phone" in device.name %}
+          <svg class="w-7 h-7 stroke-blindbit-accent stroke-2 fill-none" viewBox="0 0 24 24">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+            <line x1="12" y1="18" x2="12" y2="18"/>
+          </svg>
+          {% elif "iPad" in device.name or "Tablet" in device.name %}
+          <svg class="w-7 h-7 stroke-blindbit-accent stroke-2 fill-none" viewBox="0 0 24 24">
+            <rect x="4" y="2" width="16" height="20" rx="2" ry="2" transform="rotate(0 12 12)"/>
+            <line x1="12" y1="18" x2="12" y2="18"/>
+          </svg>
+          {% else %}
+          <svg class="w-7 h-7 stroke-blindbit-accent stroke-2 fill-none" viewBox="0 0 24 24">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="2" y1="21" x2="22" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          {% endif %}
+        </div>
+
+        <div>
+          <div class="flex items-center gap-3">
+            <p class="text-lg font-bold">{{ device.name }}</p>
+            {% if forloop.first %}
+            <span class="text-[0.6rem] font-mono font-bold uppercase tracking-wider bg-blindbit-accent text-blindbit-black px-2 py-0.5 border border-blindbit-black">Current</span>
+            {% endif %}
+          </div>
+          <div class="flex items-center gap-4 mt-1 text-xs text-gray-500 font-mono">
+            <span>Since {{ device.created_at|date:"M j, Y" }}</span>
+            <span class="text-gray-300">|</span>
+            <span>Last used {{ device.last_used|date:"M j, Y g:i A" }}</span>
+            <span class="text-gray-300">|</span>
+            <span class="{% if device.prf_enabled %}text-green-600{% else %}text-amber-600{% endif %} font-bold uppercase">
+              {% if device.prf_enabled %}Passkey Only{% else %}Passkey + Passphrase{% endif %}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="requestRemoveOTP('{{ device.id }}', '{{ device.name|escapejs }}')"
+        class="font-mono font-bold text-xs uppercase text-red-500 hover:text-red-700 hover:bg-red-50 transition-all bg-transparent border-2 border-transparent hover:border-red-200 cursor-pointer px-3 py-1.5">
+        Remove
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="mt-6 bg-blindbit-white border-2 border-blindbit-black shadow-brutal p-5">
+    <div class="flex items-center gap-3">
+      <svg class="w-5 h-5 stroke-blindbit-blue stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="8"/></svg>
+      <p class="text-sm text-gray-600">Devices are added automatically when you sign in with a passkey on a new browser or machine. Use Add Device to register this browser as a trusted device.</p>
+    </div>
+  </div>
+  {% else %}
+  <div class="bg-white border-2 border-blindbit-black shadow-brutal">
+    <div class="p-14 text-center">
+      <div class="w-20 h-20 mx-auto mb-5 bg-blindbit-black flex items-center justify-center">
+        <svg class="w-10 h-10 stroke-blindbit-accent stroke-2 fill-none" viewBox="0 0 24 24">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+          <line x1="2" y1="21" x2="22" y2="21"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+      </div>
+      <p class="text-gray-500 text-lg font-semibold mb-1">No trusted devices yet</p>
+      <p class="text-sm text-gray-400 mb-6 max-w-md mx-auto leading-relaxed">Creating a passkey during sign-up automatically registers this device. You can also add one now.</p>
+      <button onclick="openAddDeviceModal()"
+        class="inline-flex items-center gap-2 font-mono font-bold text-xs tracking-wider uppercase no-underline bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-6 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">
+        <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Device
+      </button>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Add Device Modal -->
+<div id="add-device-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/40">
+  <div class="bg-white border-2 border-blindbit-black shadow-brutal-lg w-full max-w-sm mx-4 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-bold text-lg">Add Trusted Device</h2>
+      <button onclick="closeAddDeviceModal()" class="bg-transparent border-0 cursor-pointer text-gray-400 hover:text-blindbit-black text-xl leading-none">&times;</button>
+    </div>
+
+    <!-- Step 1: Enter passphrase -->
+    <div id="add-step-passphrase">
+      <p class="text-sm text-gray-600 mb-4">Enter your vault passphrase to authorize a new device.</p>
+      <input type="password" id="add-device-passphrase" placeholder="Enter your passphrase"
+        class="w-full border-2 border-blindbit-black p-3 text-sm font-mono outline-none focus:ring-2 focus:ring-blindbit-accent mb-4" />
+      <button onclick="verifyPassphraseForDevice()" id="add-passphrase-btn"
+        class="w-full font-mono font-bold text-xs uppercase bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">
+        Verify Passphrase
+      </button>
+      <p id="add-passphrase-error" class="mt-3 text-red-600 text-sm hidden"></p>
+    </div>
+
+    <!-- Step 2: Create passkey -->
+    <div id="add-step-passkey" class="hidden">
+      <p class="text-sm text-gray-600 mb-4">Create a passkey for this device.</p>
+      <button onclick="createDevicePasskey()" id="add-passkey-btn"
+        class="w-full font-mono font-bold text-xs uppercase bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer flex items-center justify-center gap-2">
+        <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+        Create Passkey
+      </button>
+      <p id="add-passkey-error" class="mt-3 text-red-600 text-sm hidden"></p>
+    </div>
+
+    <!-- Step 3: Success -->
+    <div id="add-step-done" class="hidden">
+      <div class="text-center py-6">
+        <div class="w-16 h-16 mx-auto mb-4 bg-green-100 border-2 border-green-500 flex items-center justify-center">
+          <svg class="w-8 h-8 stroke-green-600 stroke-2 fill-none" viewBox="0 0 24 24"><polyline points="9,12 11,14 15,10"/><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <p class="font-bold text-lg mb-1">Device Added</p>
+        <p class="text-sm text-gray-500 mb-4">Your new device is now trusted.</p>
+        <button onclick="window.location.reload()"
+          class="font-mono font-bold text-xs uppercase bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-6 py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OTP Modal -->
+<div id="otp-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/40">
+  <div class="bg-white border-2 border-blindbit-black shadow-brutal-lg w-full max-w-sm mx-4 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-bold text-lg">Verify Removal</h2>
+      <button onclick="closeOTPModal()" class="bg-transparent border-0 cursor-pointer text-gray-400 hover:text-blindbit-black text-xl leading-none">&times;</button>
+    </div>
+    <div id="otp-step-send">
+      <p class="text-sm text-gray-600 mb-4">A one-time code will be sent to <strong>{{ user.email }}</strong>.</p>
+      <button onclick="sendOTP()" id="otp-send-btn" class="w-full font-mono font-bold text-xs uppercase bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">Send Code</button>
+      <p id="otp-send-error" class="mt-3 text-red-600 text-sm hidden"></p>
+    </div>
+    <div id="otp-step-verify" class="hidden">
+      <p class="text-sm text-gray-600 mb-4">Enter the code sent to <strong>{{ user.email }}</strong>.</p>
+      <input type="text" id="otp-input" maxlength="6"
+        class="w-full border-2 border-blindbit-black p-3 text-center text-lg font-mono font-bold tracking-[0.5em] outline-none focus:ring-2 focus:ring-blindbit-accent mb-4"
+        placeholder="000000" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" />
+      <button onclick="verifyOTP()" id="otp-verify-btn" class="w-full font-mono font-bold text-xs uppercase bg-red-500 text-white border-2 border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">Remove Device</button>
+      <p id="otp-verify-error" class="mt-3 text-red-600 text-sm hidden"></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function getDeviceName() {
+  const ua = navigator.userAgent;
+  let os = 'Unknown OS';
+  if (ua.includes('Win')) os = 'Windows';
+  else if (ua.includes('Mac') && !ua.includes('iPhone') && !ua.includes('iPad')) os = 'macOS';
+  else if (ua.includes('Linux') && !ua.includes('Android')) os = 'Linux';
+  else if (ua.includes('Android')) os = 'Android';
+  else if (ua.includes('iPhone') || ua.includes('iPad') || ua.includes('iPod')) os = 'iOS';
+  let browser = 'Browser';
+  if (ua.includes('Chrome') && !ua.includes('Edg') && !ua.includes('OPR')) browser = 'Chrome';
+  else if (ua.includes('Firefox') && !ua.includes('Seamonkey')) browser = 'Firefox';
+  else if (ua.includes('Safari') && !ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Safari';
+  else if (ua.includes('Edg')) browser = 'Edge';
+  else if (ua.includes('OPR') || ua.includes('Opera')) browser = 'Opera';
+  return `${browser} on ${os}`;
+}
+
+function b642ab(b64) {
+  b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); });
+}
+
+function ab2b64(ab) {
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(ab)));
+}
+
+async function sha256Hex(str) {
+  var enc = new TextEncoder().encode(str);
+  var hash = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(hash)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+// ── Add Device ──
+
+let addDeviceMasterKey = null;
+
+function openAddDeviceModal() {
+  addDeviceMasterKey = null;
+  document.getElementById('add-step-passphrase').classList.remove('hidden');
+  document.getElementById('add-step-passkey').classList.add('hidden');
+  document.getElementById('add-step-done').classList.add('hidden');
+  document.getElementById('add-device-passphrase').value = '';
+  document.getElementById('add-passphrase-error').classList.add('hidden');
+  document.getElementById('add-passkey-error').classList.add('hidden');
+  document.getElementById('add-passphrase-btn').disabled = false;
+  document.getElementById('add-passphrase-btn').textContent = 'Verify Passphrase';
+  document.getElementById('add-device-modal').classList.remove('hidden');
+}
+
+function closeAddDeviceModal() {
+  document.getElementById('add-device-modal').classList.add('hidden');
+  addDeviceMasterKey = null;
+}
+
+async function verifyPassphraseForDevice() {
+  const passphrase = document.getElementById('add-device-passphrase').value;
+  const err = document.getElementById('add-passphrase-error');
+  const btn = document.getElementById('add-passphrase-btn');
+  err.classList.add('hidden');
+
+  if (!passphrase) {
+    err.textContent = 'Please enter your passphrase.';
+    err.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+
+  try {
+    const resp = await fetch('{% url "accounts:add_device_options" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+    });
+    const data = await resp.json();
+    if (data.error) { throw new Error(data.error); }
+
+    var wrappedMk = data.wrapped_master_key_passphrase || '';
+    var saltHex = data.passphrase_salt || '';
+
+    if (!wrappedMk || !saltHex) {
+      throw new Error('No passphrase configured for this account.');
+    }
+
+    var salt = new Uint8Array(saltHex.match(/.{2}/g).map(function(b) { return parseInt(b, 16); }));
+    var wrappingKey = await BlindBitCrypto.deriveKeyFromPassphrase(passphrase, salt);
+    var mk = await BlindBitCrypto.unwrapKey(wrappingKey, wrappedMk);
+    addDeviceMasterKey = mk;
+
+    window.__addDeviceOptions = data;
+
+    document.getElementById('add-step-passphrase').classList.add('hidden');
+    document.getElementById('add-step-passkey').classList.remove('hidden');
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Verify Passphrase';
+  }
+}
+
+async function createDevicePasskey() {
+  const err = document.getElementById('add-passkey-error');
+  const btn = document.getElementById('add-passkey-btn');
+  err.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+
+  try {
+    var options = window.__addDeviceOptions;
+    if (!options) throw new Error('No registration options. Please start over.');
+
+    if (options.challenge) options.challenge = b642ab(options.challenge);
+    if (options.user && options.user.id) options.user.id = b642ab(options.user.id);
+
+    var credential = await navigator.credentials.create({ publicKey: options });
+    var attResp = credential.response;
+
+    var completeResp = await fetch('{% url "accounts:add_device_complete" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({
+        credential: {
+          id: credential.id,
+          raw_id: ab2b64(credential.rawId),
+          response: {
+            client_data_json: ab2b64(attResp.clientDataJSON),
+            attestation_object: ab2b64(attResp.attestationObject),
+          },
+        },
+        device_name: getDeviceName(),
+        prf_enabled: false,
+        wrapped_master_key: '',
+      }),
+    });
+    var completeData = await completeResp.json();
+
+    if (completeData.error) { throw new Error(completeData.error); }
+
+    document.getElementById('add-step-passkey').classList.add('hidden');
+    document.getElementById('add-step-done').classList.remove('hidden');
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('hidden');
+    btn.disabled = false;
+    btn.innerHTML = '<svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg> Create Passkey';
+  }
+}
+
+// ── Remove Device (OTP) ──
+
+let pendingDeviceId = null;
+let pendingDeviceName = '';
+
+function requestRemoveOTP(deviceId, deviceName) {
+  pendingDeviceId = deviceId;
+  pendingDeviceName = deviceName;
+  document.getElementById('otp-step-send').classList.remove('hidden');
+  document.getElementById('otp-step-verify').classList.add('hidden');
+  document.getElementById('otp-send-error').classList.add('hidden');
+  document.getElementById('otp-verify-error').classList.add('hidden');
+  document.getElementById('otp-input').value = '';
+  document.getElementById('otp-send-btn').disabled = false;
+  document.getElementById('otp-send-btn').textContent = 'Send Code';
+  document.getElementById('otp-modal').classList.remove('hidden');
+}
+
+function closeOTPModal() {
+  document.getElementById('otp-modal').classList.add('hidden');
+  pendingDeviceId = null;
+}
+
+async function sendOTP() {
+  const btn = document.getElementById('otp-send-btn');
+  const err = document.getElementById('otp-send-error');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  err.classList.add('hidden');
+
+  try {
+    const resp = await fetch('/accounts/api/device/' + pendingDeviceId + '/send-otp/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+    });
+    const data = await resp.json();
+    if (data.status === 'otp_sent') {
+      document.getElementById('otp-step-send').classList.add('hidden');
+      document.getElementById('otp-step-verify').classList.remove('hidden');
+    } else {
+      throw new Error(data.error || 'Failed to send OTP');
+    }
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Send Code';
+  }
+}
+
+async function verifyOTP() {
+  const btn = document.getElementById('otp-verify-btn');
+  const err = document.getElementById('otp-verify-error');
+  const otp = document.getElementById('otp-input').value.trim();
+  if (otp.length !== 6) {
+    err.textContent = 'Please enter the 6-digit code.';
+    err.classList.remove('hidden');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+  err.classList.add('hidden');
+
+  try {
+    const resp = await fetch('/accounts/api/device/' + pendingDeviceId + '/verify-remove/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({ otp: otp }),
+    });
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      closeOTPModal();
+      window.location.reload();
+    } else {
+      throw new Error(data.error || 'Verification failed');
+    }
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Remove Device';
+  }
+}
+</script>
+{% endblock %}
