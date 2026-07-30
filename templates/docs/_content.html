@@ -1,0 +1,341 @@
+<!-- Search -->
+<div class="search-bar">
+  <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  <input type="text" id="doc-search" placeholder="Search documentation..." />
+  <span class="kbd kbd-sm" style="opacity:0.3">/</span>
+</div>
+
+<!-- Breadcrumb -->
+<div class="doc-breadcrumb">
+  <a href="/">Home</a>
+  <span class="sep">→</span>
+  <span>Help & Guide</span>
+</div>
+
+<!-- ===== OVERVIEW ===== -->
+<section id="overview" data-section="overview">
+  <h1>BlindBit Help & Guide</h1>
+  <p>
+    BlindBit is a <strong>zero-knowledge file vault</strong> — your files are encrypted in your browser
+    before they ever reach the server. The server only stores scrambled data it cannot read.
+  </p>
+
+  <div class="callout callout-info">
+    <svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="#1B4DFF" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <div class="callout-content">
+      <strong>Privacy by Design</strong>
+      BlindBit never sees your files, filenames, or keys. Everything is encrypted and decrypted
+      locally in your browser using the Web Crypto API.
+    </div>
+  </div>
+</section>
+
+<!-- ===== QUICK START ===== -->
+<section id="quickstart" data-section="quickstart">
+  <h2><span class="h-anchor">01</span> Quick Start</h2>
+
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h4>Create Your Account</h4>
+      <p>Click <strong>Sign Up</strong> and create a passkey (or set a passphrase if your browser doesn't support PRF). Save your recovery phrase — this is your only backup.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h4>Upload a File</h4>
+      <p>Click <strong>Upload</strong> in the sidebar, select any file, and click <strong>Lock & Upload</strong>. The file is encrypted in your browser before it leaves your machine.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h4>Open a File</h4>
+      <p>Click <strong>Open</strong> on any file in your vault. The encrypted data is fetched, decrypted in your browser, and your browser downloads the original file.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <h4>Share a File</h4>
+      <p>Go to a file's details page, click <strong>Share</strong>, enter the recipient's username, and send. They'll see the file under <strong>Shared With You</strong> on their dashboard.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== AUTHENTICATION ===== -->
+<section id="auth" data-section="auth">
+  <h2><span class="h-anchor">02</span> Authentication</h2>
+
+  <p>BlindBit uses <strong>passkeys</strong> (WebAuthn) instead of passwords. You sign in with your device's built-in biometrics or PIN.</p>
+
+  <h3>Signing Up</h3>
+  <ol>
+    <li>Enter your username, email, and display name</li>
+    <li>Your browser will prompt you to create a passkey (Face ID, Touch ID, Windows Hello, or a security key)</li>
+    <li>Choose whether to set a <strong>passphrase</strong> (recommended for Firefox users or as a backup)</li>
+    <li>Save your <strong>24-word recovery phrase</strong> — this is your only way to recover access if you lose all devices</li>
+  </ol>
+
+  <h3>Signing In</h3>
+  <ol>
+    <li>Enter your username</li>
+    <li>Your browser prompts you to authenticate with your passkey</li>
+    <li>If you set a passphrase, you'll be prompted to enter it after the passkey check</li>
+    <li>You're in — your vault decrypts locally using the keys derived from your passkey</li>
+  </ol>
+
+  <div class="callout callout-warning">
+    <svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="#FF8A00" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div class="callout-content">
+      <strong>Browser Compatibility</strong>
+      Chrome and Edge support the PRF extension (your passkey directly derives your encryption key).
+      Firefox and Safari do not — you'll use the <strong>passphrase fallback</strong> instead. Both paths are fully supported.
+    </div>
+  </div>
+
+  <h3>Passphrase</h3>
+  <p>
+    A passphrase is an optional extra layer. If you enable it:
+  </p>
+  <ul>
+    <li><strong>Registration:</strong> You set a passphrase (min 12 characters) after creating your passkey</li>
+    <li><strong>Login:</strong> You authenticate with your passkey first, then enter your passphrase</li>
+    <li>The passphrase unlocks your Master Key (wrapped under an Argon2id-derived key)</li>
+  </ul>
+</section>
+
+<!-- ===== YOUR VAULT ===== -->
+<section id="vault" data-section="vault">
+  <h2><span class="h-anchor">03</span> Your Vault</h2>
+
+  <p>
+    The <strong>My Vault</strong> page is your dashboard. It shows your files, files shared with you,
+    and your vault status.
+  </p>
+
+  <h3>Dashboard Cards</h3>
+  <ul>
+    <li><strong>Your Files</strong> — Total number of files you've uploaded</li>
+    <li><strong>Shared With You</strong> — Number of files others have shared with you</li>
+    <li><strong>Status</strong> — Shows "Secure" when everything is working</li>
+  </ul>
+
+  <h3>Uploading a File</h3>
+  <ol>
+    <li>Click <strong>Upload</strong> in the sidebar</li>
+    <li>Drag and drop a file, or click to browse (max 100MB)</li>
+    <li>Click <strong>Lock & Upload</strong></li>
+    <li>The file is encrypted with AES-256-GCM in your browser, then sent to the server</li>
+    <li>You're redirected back to your vault when complete</li>
+  </ol>
+
+  <div class="callout callout-info">
+    <svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="#1B4DFF" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <div class="callout-content">
+      <strong>Filename Privacy</strong>
+      Even filenames are encrypted. On the server and in the database, your file is stored with a scrambled name.
+    </div>
+  </div>
+
+  <h3>Opening a File</h3>
+  <ol>
+    <li>Click <strong>Open</strong> on any file in your vault</li>
+    <li>The encrypted data is fetched from the server</li>
+    <li>Your browser decrypts the file locally using the file key</li>
+    <li>Your browser downloads the decrypted file with its original name</li>
+  </ol>
+
+  <div class="callout callout-warning">
+    <svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="#FF8A00" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div class="callout-content">
+      <strong>Decryption Requires Your Session</strong>
+      You must be logged in to decrypt files. The decryption key is derived from your passkey (or passphrase) during login.
+    </div>
+  </div>
+</section>
+
+<!-- ===== SHARING ===== -->
+<section id="sharing" data-section="sharing">
+  <h2><span class="h-anchor">04</span> Sharing Files</h2>
+
+  <p>Share files with other BlindBit users without exposing your keys.</p>
+
+  <h3>How to Share</h3>
+  <ol>
+    <li>Go to the file's <strong>details page</strong> (click the file name in your vault)</li>
+    <li>Click <strong>Share</strong></li>
+    <li>Enter the recipient's username or email</li>
+    <li>The file key is wrapped under the recipient's public key (ECDH) in your browser</li>
+    <li>Hit <strong>Share</strong> — the recipient can now open the file from their dashboard</li>
+  </ol>
+
+  <h3>Viewing Shared Files</h3>
+  <p>
+    Files shared with you appear in the <strong>Shared With You</strong> section on your dashboard and in the sidebar's <strong>Shared</strong> page. Click <strong>Open</strong> to decrypt and download them (requires the full ECDH key chain — coming soon).
+  </p>
+
+  <h3>Revoking a Share</h3>
+  <ol>
+    <li>Go to the file's details page</li>
+    <li>Click <strong>Revoke</strong> next to the recipient's name</li>
+    <li>Confirm — the file will be re-encrypted with a new key and the recipient loses access</li>
+  </ol>
+
+  <div class="callout callout-info">
+    <svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="#1B4DFF" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <div class="callout-content">
+      <strong>End-to-End Encrypted Sharing</strong>
+      The file key is wrapped using ECDH (X25519) between an ephemeral keypair and the recipient's public key. The server only stores the wrapped key and ephemeral public key — it cannot unwrap it.
+    </div>
+  </div>
+</section>
+
+<!-- ===== TRUSTED DEVICES ===== -->
+<section id="devices" data-section="devices">
+  <h2><span class="h-anchor">05</span> Trusted Devices</h2>
+
+  <p>
+    Every device you sign in with is automatically added as a trusted device. You can view and manage
+    them from the <strong>Devices</strong> page in the sidebar.
+  </p>
+
+  <h3>What You See</h3>
+  <ul>
+    <li>Device name (e.g. "Chrome on Windows", "Safari on macOS")</li>
+    <li>Device icon — laptop, phone, or tablet detected from the name</li>
+    <li>"Current" badge on the device you're using now</li>
+    <li>Auth method badge: <span class="doc-tag doc-tag-green">Passkey Only</span> or <span class="doc-tag doc-tag-blue">Passkey + Passphrase</span></li>
+    <li>When the device was first added and last used</li>
+  </ul>
+
+  <h3>Removing a Device</h3>
+  <p>To remove a trusted device:</p>
+  <ol>
+    <li>Click <strong>Remove</strong> next to the device</li>
+    <li>A modal appears asking to send a one-time code to your email</li>
+    <li>Click <strong>Send Code</strong> — a 6-digit OTP is emailed to you (expires in 10 minutes)</li>
+    <li>Enter the code and click <strong>Remove Device</strong></li>
+    <li>The device record is deleted — it will need to re-authenticate next time</li>
+  </ol>
+
+  <div class="callout callout-warning">
+    <svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="#FF8A00" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div class="callout-content">
+      <strong>OTP Email</strong>
+      In development mode, OTP emails are printed to your terminal console. Configure SMTP in <code>settings.py</code> for real email delivery in production.
+    </div>
+  </div>
+</section>
+
+<!-- ===== ACCOUNT RECOVERY ===== -->
+<section id="recovery" data-section="recovery">
+  <h2><span class="h-anchor">06</span> Account Recovery</h2>
+
+  <p>
+    Your <strong>24-word BIP39 recovery phrase</strong> is generated during registration and is the only
+    way to recover your vault if you lose access to all your devices.
+  </p>
+
+  <div class="callout callout-danger">
+    <svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="#FF2D2D" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    <div class="callout-content">
+      <strong>BlindBit Cannot Recover Your Phrase</strong>
+      The recovery phrase is generated in your browser and is never sent to the server. Save it somewhere safe — if you lose it, your vault is permanently inaccessible.
+    </div>
+  </div>
+
+  <h3>During Registration</h3>
+  <ol>
+    <li>After creating your account, a 24-word recovery phrase is generated</li>
+    <li>Download or copy the phrase and store it securely (password manager, offline backup, safe)</li>
+    <li>Check the confirmation box and click <strong>Confirm</strong> to proceed</li>
+    <li>You can optionally set a <strong>BIP39 passphrase</strong> (different from your login passphrase) — this adds extra security but you must remember it</li>
+  </ol>
+
+  <h3>Recovering Your Account</h3>
+  <ol>
+    <li>Go to the <strong>Recovery</strong> page from the sign-in screen</li>
+    <li>Enter your 24-word phrase and optional BIP39 passphrase</li>
+    <li>Your Master Key is derived from the phrase and you can create a new passkey</li>
+  </ol>
+</section>
+
+<!-- ===== TROUBLESHOOTING ===== -->
+<section id="troubleshooting" data-section="troubleshooting">
+  <h2><span class="h-anchor">07</span> Troubleshooting</h2>
+
+  <div class="callout callout-info">
+    <svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="#1B4DFF" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <div class="callout-content">
+      <strong>Need Help?</strong>
+      File an issue at <a href="https://github.com/anomalyco/blindbit/issues">github.com/anomalyco/blindbit</a>.
+    </div>
+  </div>
+
+  <h3>Decryption Fails with "Failed to fetch file data"</h3>
+  <p>The server returned a 404 or error. Make sure the file exists and you have access (either as owner or via a share).</p>
+
+  <h3>Passkey Creation Fails</h3>
+  <p>Some browsers block WebAuthn on insecure origins (HTTP). Use <code>127.0.0.1</code> instead of <code>localhost</code>, or set up HTTPS.</p>
+
+  <h3>"User not found" During Login</h3>
+  <p>Type the exact username you registered with. Usernames are case-sensitive.</p>
+
+  <h3>OTP Email Not Received</h3>
+  <p>In development, OTP emails are printed to the terminal where you ran <code>python manage.py runserver</code>. Check that terminal output.</p>
+
+  <h3>File Upload Gets Stuck</h3>
+  <p>Large files (near 100MB) take time to encrypt in the browser. Wait for the progress bar to complete. If it truly hangs, refresh and try a smaller file.</p>
+
+  <h3>Passphrase Login Loops or Returns to Login</h3>
+  <p>Try clearing your site data and cookies for BlindBit, then sign in fresh. This resolves most session conflicts.</p>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section id="faq" data-section="faq">
+  <h2><span class="h-anchor">08</span> FAQ</h2>
+
+  <h3>Can the server read my files?</h3>
+  <p>No. Files are encrypted with AES-256-GCM in your browser before uploading. The server only sees ciphertext.</p>
+
+  <h3>Can the server see my filenames?</h3>
+  <p>No. Filenames are encrypted before upload and stored as scrambled text.</p>
+
+  <h3>What if I lose my passkey?</h3>
+  <p>Use your <strong>24-word recovery phrase</strong> to recover your account and register a new passkey.</p>
+
+  <h3>What if I forget my passphrase?</h3>
+  <p>If you set a passphrase and forget it, you cannot unlock your Master Key. Recovery requires the recovery phrase and a new passkey.</p>
+
+  <h3>What if I lose my recovery phrase?</h3>
+  <p>Your vault is permanently inaccessible. BlindBit has no server-side copy of your recovery phrase. There is no backdoor.</p>
+
+  <h3>Is there a file size limit?</h3>
+  <p>Yes — 100MB per file in Phase 1. This is due to browser memory constraints for client-side encryption of large files.</p>
+
+  <h3>Can I use BlindBit on mobile?</h3>
+  <p>Yes, but mobile passkey support varies by browser. Chrome on Android and Safari on iOS work best.</p>
+
+  <h3>How is sharing different from just sending the file?</h3>
+  <p>Sharing uses ECDH (X25519) to wrap the file key under the recipient's public key. The server stores only the wrapped key — it never has access to the plaintext file key.</p>
+
+  <h3>Can I revoke a share?</h3>
+  <p>Yes. Revoking generates a new file key, re-encrypts the file, and re-wraps the key for you. The revoked recipient's wrapped key becomes unusable.</p>
+</section>
+
+<!-- Prev / Next -->
+<div class="doc-prevnext">
+  <a href="/">
+    <span class="pn-label">← Previous</span>
+    <span class="pn-title">Home</span>
+  </a>
+  <a href="{% url 'accounts:register' %}">
+    <span class="pn-label">Next →</span>
+    <span class="pn-title">Get Started</span>
+  </a>
+</div>

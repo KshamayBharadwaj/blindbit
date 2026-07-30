@@ -1,0 +1,206 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}BlindBit{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Space Grotesk', 'sans-serif'],
+            mono: ['Space Mono', 'monospace'],
+          },
+          colors: {
+            blindbit: {
+              bg: '#F5F5F0',
+              black: '#0A0A0A',
+              white: '#FAFAF5',
+              accent: '#CCFF00',
+              blue: '#1B4DFF',
+              sidebar: '#FFFFFF',
+              nav: '#E8E8E2',
+              hover: '#F0F0EB',
+            }
+          },
+          boxShadow: {
+            'brutal': '4px 4px 0px #0A0A0A',
+            'brutal-lg': '7px 7px 0px #0A0A0A',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Space Grotesk', sans-serif; background-color: #F5F5F0; color: #0A0A0A; min-height: 100vh; }
+    .file-drop { border: 2.5px dashed #0A0A0A; transition: all 0.15s; }
+    .file-drop.dragover { background: #CCFF00; border-color: #1B4DFF; }
+    .progress-bar { transition: width 0.3s ease; }
+    .toast { animation: slideUp 0.3s ease, fadeOut 0.3s ease 3s forwards; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+    .sidebar-link { transition: all 0.1s; }
+    .sidebar-link:hover { background: #F0F0EB; transform: translateX(2px); }
+    .sidebar-link.active { background: #0A0A0A; color: #CCFF00; font-weight: 700; }
+    .sidebar-link.active svg { stroke: #CCFF00; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  {% if user.is_authenticated %}
+  <div class="min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="w-56 shrink-0 bg-blindbit-sidebar border-r-2 border-blindbit-black fixed top-0 left-0 h-full z-40 flex flex-col">
+      <!-- Logo -->
+      <a href="{% url 'vault:dashboard' %}" class="flex items-center gap-2 h-16 px-5 border-b-2 border-blindbit-black no-underline text-blindbit-black shrink-0">
+        <div class="w-7 h-7 bg-blindbit-black flex items-center justify-center shrink-0">
+          <svg viewBox="0 0 16 16" class="w-4 h-4 fill-blindbit-accent"><path d="M8 1L1 4v4c0 4 3.5 7 7 8 3.5-1 7-4 7-8V4L8 1z"/></svg>
+        </div>
+        <span class="font-mono font-bold text-base tracking-tight">BLINDBIT<span class="text-blindbit-blue text-xl">.</span></span>
+      </a>
+
+      <!-- Nav Links -->
+      <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        <a href="{% url 'vault:dashboard' %}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium no-underline text-blindbit-black rounded {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+          <svg class="w-4 h-4 stroke-blindbit-black stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="4"/><rect x="14" y="10" width="7" height="11"/><rect x="3" y="14" width="7" height="7"/></svg>
+          My Vault
+        </a>
+        <a href="{% url 'vault:upload' %}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium no-underline text-blindbit-black rounded {% if request.resolver_match.url_name == 'upload' %}active{% endif %}">
+          <svg class="w-4 h-4 stroke-blindbit-black stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload
+        </a>
+        <a href="{% url 'sharing:shared_with_me' %}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium no-underline text-blindbit-black rounded {% if request.resolver_match.url_name == 'shared_with_me' %}active{% endif %}">
+          <svg class="w-4 h-4 stroke-blindbit-black stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Shared
+        </a>
+        <a href="{% url 'accounts:devices' %}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium no-underline text-blindbit-black rounded {% if request.resolver_match.url_name == 'devices' %}active{% endif %}">
+          <svg class="w-4 h-4 stroke-blindbit-black stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="15" y2="22"/></svg>
+          Devices
+        </a>
+        <a href="/docs/" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium no-underline text-blindbit-black rounded">
+          <svg class="w-4 h-4 stroke-blindbit-black stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          Help & Guide
+        </a>
+      </nav>
+
+      <!-- Bottom: User + Sign Out -->
+      <div class="border-t-2 border-blindbit-black p-3 shrink-0">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium truncate">{{ user.username }}</span>
+          <a href="{% url 'accounts:logout' %}" class="flex items-center gap-1.5 text-xs font-mono font-bold uppercase no-underline text-blindbit-black hover:text-red-500 transition-colors px-2 py-1">
+            <svg class="w-3.5 h-3.5 stroke-current stroke-2 fill-none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Leave
+          </a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="ml-56 min-h-screen flex-1">
+      {% block content_app %}{% endblock %}
+    </main>
+  </div>
+  {% else %}
+  <!-- Public pages (no sidebar) -->
+  <nav class="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 lg:px-12 bg-blindbit-nav border-b-2 border-blindbit-black">
+    <a href="/" class="flex items-center gap-2 font-mono font-bold text-lg tracking-tight no-underline text-blindbit-black">
+      <div class="w-7 h-7 bg-blindbit-black flex items-center justify-center">
+        <svg viewBox="0 0 16 16" class="w-4 h-4 fill-blindbit-accent"><path d="M8 1L1 4v4c0 4 3.5 7 7 8 3.5-1 7-4 7-8V4L8 1z"/></svg>
+      </div>
+      BLINDBIT<span class="text-blindbit-blue text-2xl">.</span>
+    </a>
+    <div class="flex items-center gap-4">
+      <a href="{% url 'accounts:login' %}" class="text-sm font-medium no-underline text-blindbit-black px-3 py-2">Sign In</a>
+      <a href="{% url 'accounts:register' %}" class="font-mono font-bold text-xs tracking-wider uppercase no-underline bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-5 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Sign Up</a>
+    </div>
+  </nav>
+  <main class="pt-16">
+    {% block content_public %}{% endblock %}
+  </main>
+  {% endif %}
+
+  {% block extra_scripts %}{% endblock %}
+
+<script src="{% static 'js/crypto.js' %}"></script>
+<script>
+window.BlindBitMasterKey = null;
+
+// Restore master key from session storage on every page load
+(function() {
+  var raw = sessionStorage.getItem('blindbit_master_key_raw');
+  if (raw) {
+    try {
+      var bytes = U8(raw);
+      crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']).then(function(k) {
+        window.BlindBitMasterKey = k;
+      });
+    } catch(e) { /* ignore */ }
+  }
+})();
+
+function U8(b64) {
+  return new Uint8Array(atob(b64).split('').map(function(c) { return c.charCodeAt(0); }));
+}
+
+async function decryptAndDownload(fileId) {
+  const btn = document.querySelector('[data-download-btn="' + fileId + '"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Decrypting...'; }
+
+  try {
+    var resp = await fetch('/vault/api/files/' + fileId + '/download-data/');
+    if (!resp.ok) {
+      var err = await resp.json();
+      throw new Error(err.error || 'Failed to fetch file data');
+    }
+    var data = await resp.json();
+
+    if (data.access === 'shared') {
+      alert('Shared file decryption requires the full key chain (ECDH). This feature will be available soon.');
+      if (btn) { btn.textContent = 'Open'; btn.disabled = false; }
+      return;
+    }
+
+    var ciphertext = U8(data.ciphertext);
+    var fileKeyB64 = data.wrapped_file_key;
+    var nonce = U8(data.nonce);
+    var encryptedFilenameBytes = U8(data.encrypted_filename);
+    var originalName = new TextDecoder().decode(encryptedFilenameBytes);
+    var mimeType = data.mime_type || 'application/octet-stream';
+
+    var fileKeyRaw = U8(fileKeyB64);
+    var key;
+    if (fileKeyRaw.length === 32) {
+      key = await crypto.subtle.importKey('raw', fileKeyRaw, { name: 'AES-GCM' }, false, ['decrypt']);
+    } else {
+      if (!window.BlindBitMasterKey) throw new Error('Master key required but not available');
+      key = await BlindBitCrypto.unwrapKey(window.BlindBitMasterKey, fileKeyB64);
+    }
+    var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce }, key, ciphertext);
+
+    var blob = new Blob([decrypted], { type: mimeType });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = originalName || 'file';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    if (btn) { btn.textContent = 'Open'; btn.disabled = false; }
+  } catch (err) {
+    alert('Decryption failed: ' + err.message);
+    if (btn) { btn.textContent = 'Open'; btn.disabled = false; }
+  }
+}
+</script>
+</body>
+</html>
