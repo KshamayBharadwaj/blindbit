@@ -7,7 +7,7 @@ from django.views.static import serve
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', TemplateView.as_view(template_name='index.html'), name='landing'),
+    path('', TemplateView.as_view(template_name='accounts/landing.html'), name='landing'),
     path('accounts/', include('accounts.urls')),
     path('vault/', include('vault.urls')),
     path('sharing/', include('sharing.urls')),
