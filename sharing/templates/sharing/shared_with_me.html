@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Shared — BlindBit{% endblock %}
+{% block content_app %}
+<div class="p-6 sm:p-8 lg:p-10 max-w-4xl">
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold">Shared With You</h1>
+    <p class="text-sm text-gray-500 mt-0.5">Files other people have shared with you.</p>
+  </div>
+
+  <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal">
+    {% if shares %}
+    <div class="divide-y-[2.5px] divide-[#0A0A0A]">
+      {% for share in shares %}
+      <div class="flex items-center justify-between p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors">
+        <div class="flex items-center gap-3 min-w-0 flex-1">
+          <div class="w-9 h-9 bg-[#1B4DFF] border-[2.5px] border-[#0A0A0A] flex items-center justify-center flex-shrink-0">
+            <svg class="w-4.5 h-4.5 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="min-w-0">
+            <p class="font-semibold truncate">From <span class="text-[#1B4DFF]">{{ share.owner.username }}</span></p>
+            <p class="text-xs text-gray-400">{{ share.created_at|date:"M j, Y" }}</p>
+          </div>
+        </div>
+        <button data-download-btn="{{ share.file.id }}" onclick="decryptAndDownload('{{ share.file.id }}')" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-4 py-2 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex-shrink-0 ml-3 cursor-pointer">Open</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="p-12 text-center">
+      <div class="w-16 h-16 mx-auto mb-4 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
+        <svg class="w-8 h-8 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <p class="text-gray-500">Nothing shared with you yet</p>
+      <p class="text-sm text-gray-400 mt-1">When someone shares a file, it will appear here.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
