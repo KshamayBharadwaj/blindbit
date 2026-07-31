@@ -2,13 +2,13 @@
 {% block title %}Devices — BlindBit{% endblock %}
 {% block content_app %}
 <div class="p-6 sm:p-8 lg:p-10 max-w-4xl">
-  <div class="mb-8 flex items-center justify-between">
+  <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h1 class="text-2xl font-bold">Trusted Devices</h1>
       <p class="text-sm text-gray-500 mt-0.5">Devices that can unlock your vault.</p>
     </div>
     <button onclick="openAddDeviceModal()"
-      class="font-mono font-bold text-xs tracking-wider uppercase bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center gap-2">
+      class="font-mono font-bold text-xs tracking-wider uppercase bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 sm:w-auto w-full">
       <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add Device
     </button>
@@ -17,8 +17,8 @@
   {% if devices %}
   <div class="grid gap-4">
     {% for device in devices %}
-    <div class="bg-white border-2 border-blindbit-black shadow-brutal p-5 flex items-center justify-between hover:bg-[#F8F8F5] transition-colors">
-      <div class="flex items-center gap-5">
+    <div class="bg-white border-2 border-blindbit-black shadow-brutal p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-[#F8F8F5] transition-colors">
+      <div class="flex items-center gap-5 min-w-0">
         <div class="w-14 h-14 bg-blindbit-black flex items-center justify-center shrink-0">
           {% if "Android" in device.name or "iOS" in device.name or "iPhone" in device.name or "iPad" in device.name or "Phone" in device.name %}
           <svg class="w-7 h-7 stroke-blindbit-accent stroke-2 fill-none" viewBox="0 0 24 24">
@@ -39,14 +39,14 @@
           {% endif %}
         </div>
 
-        <div>
-          <div class="flex items-center gap-3">
-            <p class="text-lg font-bold">{{ device.name }}</p>
+        <div class="min-w-0">
+          <div class="flex items-center gap-3 flex-wrap">
+            <p class="text-lg font-bold truncate">{{ device.name }}</p>
             {% if forloop.first %}
             <span class="text-[0.6rem] font-mono font-bold uppercase tracking-wider bg-blindbit-accent text-blindbit-black px-2 py-0.5 border border-blindbit-black">Current</span>
             {% endif %}
           </div>
-          <div class="flex items-center gap-4 mt-1 text-xs text-gray-500 font-mono">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500 font-mono">
             <span>Since {{ device.created_at|date:"M j, Y" }}</span>
             <span class="text-gray-300">|</span>
             <span>Last used {{ device.last_used|date:"M j, Y g:i A" }}</span>
@@ -59,7 +59,7 @@
       </div>
 
       <button onclick="requestRemoveOTP('{{ device.id }}', '{{ device.name|escapejs }}')"
-        class="font-mono font-bold text-xs uppercase text-red-500 hover:text-red-700 hover:bg-red-50 transition-all bg-transparent border-2 border-transparent hover:border-red-200 cursor-pointer px-3 py-1.5">
+        class="font-mono font-bold text-xs uppercase text-red-500 hover:text-red-700 hover:bg-red-50 transition-all bg-transparent border-2 border-transparent hover:border-red-200 cursor-pointer px-3 py-1.5 self-start sm:self-auto">
         Remove
       </button>
     </div>

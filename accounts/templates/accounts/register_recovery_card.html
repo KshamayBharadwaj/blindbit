@@ -13,7 +13,7 @@ The JavaScript in register.html will populate and show this card when registrati
     Save this code securely. It is the <strong>only way</strong> to recover your account if you lose all devices.
   </p>
   <div id="recovery-code-display" class="font-mono text-sm tracking-widest break-all bg-white border-[2.5px] border-[#0A0A0A] p-4 mb-4 select-all" style="user-select: all;"></div>
-  <div class="flex items-center gap-3">
+  <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
     <button id="copy-recovery-btn" type="button"
       class="brutal-btn brutal-btn-secondary px-4 py-2.5 flex items-center gap-2 flex-1 justify-center">
       <svg class="w-4 h-4 stroke-current stroke-2 fill-none" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -28,4 +28,9 @@ The JavaScript in register.html will populate and show this card when registrati
   <p class="text-[0.55rem] text-gray-400 mt-3 font-mono uppercase tracking-wider text-center">
     This code will not be shown again. Store it in a password manager or write it down.
   </p>
+  <a href="{% url 'vault:dashboard' %}"
+    class="brutal-btn brutal-btn-primary mt-4 w-full px-4 py-3 flex items-center justify-center gap-2 no-underline">
+    Continue to Vault
+    <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-[2.5] fill-none" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+  </a>
 </div>

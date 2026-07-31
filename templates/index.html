@@ -434,12 +434,17 @@
 
       .hero {
         grid-template-columns: 1fr;
-        grid-template-rows: auto auto;
+        grid-template-rows: auto auto auto;
       }
 
       .hero-left {
-        padding: 60px 24px 40px;
+        display: contents;
+      }
+
+      .hero-headline {
         order: 1;
+        font-size: clamp(2.8rem, 8vw, 4rem);
+        padding: 60px 24px 0;
       }
 
       .hero-right {
@@ -448,8 +453,9 @@
         padding: 0;
       }
 
-      .hero-headline {
-        font-size: clamp(2.8rem, 8vw, 4rem);
+      .hero-cta-group {
+        order: 3;
+        padding: 32px 24px 64px;
       }
 
     }

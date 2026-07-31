@@ -6,7 +6,7 @@
     <h1 class="text-2xl font-bold mb-1">File Details</h1>
     <p class="text-xs font-mono text-gray-400 mb-6">ID: {{ file.id }}</p>
 
-    <div class="grid grid-cols-2 gap-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
       <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
         <p class="text-xs font-mono font-bold uppercase text-gray-500">Size</p>
         <p class="font-semibold">{{ file.original_size|filesizeformat }}</p>
@@ -25,9 +25,9 @@
       </div>
     </div>
 
-    <div class="flex gap-3">
-      <button data-download-btn="{{ file.id }}" onclick="decryptAndDownload('{{ file.id }}')" class="font-mono font-bold text-xs tracking-wider uppercase no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-6 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Open & Unlock</button>
-      <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-6 py-3 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all">Share</a>
+    <div class="flex flex-col sm:flex-row gap-3">
+      <button data-download-btn="{{ file.id }}" onclick="decryptAndDownload('{{ file.id }}')" class="font-mono font-bold text-xs tracking-wider uppercase no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-6 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer sm:w-auto w-full">Open & Unlock</button>
+      <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-6 py-3 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all text-center sm:w-auto w-full">Share</a>
     </div>
   </div>
 
@@ -37,7 +37,7 @@
     {% if shares %}
     <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal divide-y-[2.5px] divide-[#0A0A0A]">
       {% for share in shares %}
-      <div class="flex items-center justify-between p-4 hover:bg-[#F8F8F5] transition-colors">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 hover:bg-[#F8F8F5] transition-colors">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
             <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>

@@ -57,8 +57,25 @@
 
   {% if user.is_authenticated %}
   <div class="min-h-screen flex">
+    <!-- Mobile top bar -->
+    <div class="lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-blindbit-nav border-b-2 border-blindbit-black flex items-center justify-between px-4">
+      <a href="{% url 'vault:dashboard' %}" class="flex items-center gap-2 font-mono font-bold text-sm tracking-tight no-underline text-blindbit-black">
+        <div class="w-7 h-7 bg-blindbit-black flex items-center justify-center shrink-0">
+          <svg viewBox="0 0 16 16" class="w-4 h-4 fill-blindbit-accent"><path d="M8 1L1 4v4c0 4 3.5 7 7 8 3.5-1 7-4 7-8V4L8 1z"/></svg>
+        </div>
+        BLINDBIT<span class="text-blindbit-blue text-xl">.</span>
+      </a>
+      <button id="sidebar-toggle" onclick="toggleSidebar()" aria-label="Open menu"
+        class="p-2 cursor-pointer bg-transparent border-2 border-blindbit-black text-blindbit-black hover:bg-blindbit-accent transition-colors">
+        <svg class="w-5 h-5 stroke-current stroke-2 fill-none" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Sidebar backdrop (mobile) -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-blindbit-black/50 z-[55] lg:hidden hidden" onclick="closeSidebar()"></div>
+
     <!-- Sidebar -->
-    <aside class="w-56 shrink-0 bg-blindbit-sidebar border-r-2 border-blindbit-black fixed top-0 left-0 h-full z-40 flex flex-col">
+    <aside id="sidebar" class="w-56 shrink-0 bg-blindbit-sidebar border-r-2 border-blindbit-black fixed top-0 left-0 h-full z-[60] flex flex-col -translate-x-full lg:translate-x-0 transition-transform duration-200">
       <!-- Logo -->
       <a href="{% url 'vault:dashboard' %}" class="flex items-center gap-2 h-16 px-5 border-b-2 border-blindbit-black no-underline text-blindbit-black shrink-0">
         <div class="w-7 h-7 bg-blindbit-black flex items-center justify-center shrink-0">
@@ -104,7 +121,7 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="ml-56 min-h-screen flex-1">
+    <main class="pt-14 lg:pt-0 lg:ml-56 min-h-screen flex-1">
       {% block content_app %}{% endblock %}
     </main>
   </div>
@@ -135,6 +152,21 @@
 
 <script src="{% static 'js/crypto.js' %}"></script>
 <script>
+function openSidebar() {
+  document.getElementById('sidebar').classList.remove('-translate-x-full');
+  document.getElementById('sidebar-backdrop').classList.remove('hidden');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.add('-translate-x-full');
+  document.getElementById('sidebar-backdrop').classList.add('hidden');
+}
+function toggleSidebar() {
+  var sidebar = document.getElementById('sidebar');
+  if (sidebar.classList.contains('-translate-x-full')) { openSidebar(); } else { closeSidebar(); }
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeSidebar();
+});
 window.BlindBitMasterKey = null;
 
 // Restore master key from session storage on every page load
