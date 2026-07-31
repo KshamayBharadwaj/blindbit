@@ -1,6 +1,6 @@
 import json
 import base64
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponse
@@ -113,7 +113,7 @@ def file_detail(request, file_id):
 def delete_file(request, file_id):
     encrypted_file = get_object_or_404(EncryptedFile, id=file_id, owner=request.user)
     encrypted_file.delete()
-    return JsonResponse({'status': 'ok'})
+    return redirect('vault:dashboard')
 
 @login_required
 def file_list_api(request):

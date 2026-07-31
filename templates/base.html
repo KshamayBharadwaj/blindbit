@@ -175,8 +175,6 @@ async function decryptAndDownload(fileId) {
     var ciphertext = U8(data.ciphertext);
     var fileKeyB64 = data.wrapped_file_key;
     var nonce = U8(data.nonce);
-    var encryptedFilenameBytes = U8(data.encrypted_filename);
-    var originalName = new TextDecoder().decode(encryptedFilenameBytes);
     var mimeType = data.mime_type || 'application/octet-stream';
 
     var fileKeyRaw = U8(fileKeyB64);
@@ -186,6 +184,12 @@ async function decryptAndDownload(fileId) {
     } else {
       if (!window.BlindBitMasterKey) throw new Error('Master key required but not available');
       key = await BlindBitCrypto.unwrapKey(window.BlindBitMasterKey, fileKeyB64);
+    }
+    var originalName = await BlindBitCrypto.decryptFilename(key, data.encrypted_filename);
+    if (!originalName) {
+      try {
+        originalName = new TextDecoder().decode(U8(data.encrypted_filename));
+      } catch (e) { originalName = null; }
     }
     var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce }, key, ciphertext);
 

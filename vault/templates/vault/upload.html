@@ -140,9 +140,9 @@ form.addEventListener('submit', async (e) => {
     // Build form data
     const formData = new FormData();
     const blob = new Blob([encrypted], { type: 'application/octet-stream' });
-    formData.append('ciphertext', blob, selectedFile.name + '.enc');
+    formData.append('ciphertext', blob, 'file.enc');
     formData.append('wrapped_file_key', wrappedFileKey);
-    formData.append('encrypted_filename', btoa(selectedFile.name));
+    formData.append('encrypted_filename', await BlindBitCrypto.encryptFilename(fileKey, selectedFile.name));
     formData.append('nonce', btoa(String.fromCharCode(...iv)));
     formData.append('original_size', selectedFile.size.toString());
     formData.append('mime_type', selectedFile.type || 'application/octet-stream');

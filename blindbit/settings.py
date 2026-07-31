@@ -6,9 +6,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('BLINDBIT_SECRET_KEY')
 if not SECRET_KEY:
     import secrets
-    SECRET_KEY = f'django-insecure-{secrets.token_hex(32)}'
-    print(f'WARNING: Using auto-generated SECRET_KEY. Set BLINDBIT_SECRET_KEY env var for production.')
-    print(f'         Generated key: {SECRET_KEY}')
+    key_file = BASE_DIR / 'blindbit' / 'secret_key.txt'
+    try:
+        SECRET_KEY = key_file.read_text().strip()
+    except FileNotFoundError:
+        SECRET_KEY = f'django-insecure-{secrets.token_hex(32)}'
+        try:
+            key_file.write_text(SECRET_KEY)
+            print(f'Generated and saved SECRET_KEY to {key_file}')
+        except OSError:
+            print(f'WARNING: Could not write {key_file}; SECRET_KEY will change on every restart and sessions will be lost.')
 
 DEBUG = os.environ.get('BLINDBIT_DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = os.environ.get('BLINDBIT_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
@@ -68,7 +75,7 @@ DATABASES = {
 AUTH_PASSWORD_VALIDATORS = []
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
 

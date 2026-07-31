@@ -52,13 +52,13 @@
     {% if files %}
     <div class="divide-y-[2.5px] divide-[#0A0A0A]">
       {% for file in files %}
-      <div class="flex items-center justify-between p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors">
+      <div class="file-row flex items-center justify-between p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors" data-file-id="{{ file.id }}" data-delete-url="{% url 'vault:delete' file.id %}">
         <div class="flex items-center gap-3 min-w-0 flex-1">
           <div class="w-9 h-9 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center flex-shrink-0">
             <svg class="w-4.5 h-4.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
           </div>
           <div class="min-w-0">
-            <p class="font-semibold truncate encrypted-filename" data-encrypted="{{ file.encrypted_filename }}">Protected file</p>
+            <p class="font-semibold truncate encrypted-filename" data-encrypted="{{ file.encrypted_filename }}" data-key="{{ file.wrapped_file_key }}">Protected file</p>
             <p class="text-xs text-gray-400">
               {{ file.original_size|filesizeformat }} · {{ file.uploaded_at|date:"M j, Y" }}
             </p>
@@ -70,10 +70,7 @@
             Open
           </button>
           <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs uppercase no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-3 py-1.5 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all">Share</a>
-          <form method="post" action="{% url 'vault:delete' file.id %}" onsubmit="return confirm('Delete this file permanently?')" class="inline">
-            {% csrf_token %}
-            <button type="submit" class="font-mono font-bold text-xs uppercase text-red-500 bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-red-700">Delete</button>
-          </form>
+          <button type="button" onclick="confirmDelete('{{ file.id }}')" class="font-mono font-bold text-xs uppercase text-red-500 bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-red-700">Delete</button>
         </div>
       </div>
       {% endfor %}
@@ -113,20 +110,115 @@
   </div>
   {% endif %}
 </div>
+
+<!-- Delete confirmation modal -->
+<div id="delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] shadow-brutal p-8 max-w-md w-full">
+    <h2 class="text-xl font-bold mb-3">Delete file?</h2>
+    <p class="text-sm text-gray-600 mb-1">
+      You are about to permanently delete <span id="delete-file-name" class="font-semibold"></span>.
+    </p>
+    <p class="text-sm text-red-600 font-semibold mb-7">
+      This action is permanent. The encrypted file and all of its data will be removed from the vault immediately and cannot be recovered.
+    </p>
+    <div class="flex items-center justify-end gap-3">
+      <button type="button" id="delete-cancel" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-[#0A0A0A] bg-white border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer">Cancel</button>
+      <button type="button" id="delete-confirm" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-white bg-red-500 border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:bg-red-600 hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer">Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
+<form id="delete-form" method="post" class="hidden">
+  {% csrf_token %}
+</form>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-document.querySelectorAll('.encrypted-filename').forEach(el => {
-  const encrypted = el.dataset.encrypted;
-  if (encrypted) {
-    try {
-      const decoded = atob(encrypted);
-      el.textContent = decoded.length < 100 ? decoded : 'Protected file';
-    } catch {
-      el.textContent = 'Protected file';
-    }
-  }
+var deleteModal = document.getElementById('delete-modal');
+var deleteForm = document.getElementById('delete-form');
+
+function confirmDelete(fileId) {
+  var row = document.querySelector('.file-row[data-file-id="' + fileId + '"]');
+  var nameEl = row ? row.querySelector('.encrypted-filename') : null;
+  var name = nameEl && nameEl.textContent.trim() ? nameEl.textContent : 'this file';
+  document.getElementById('delete-file-name').textContent = name;
+  deleteForm.action = row ? row.dataset.deleteUrl : deleteForm.action;
+  deleteModal.classList.remove('hidden');
+}
+
+function closeDeleteModal() {
+  deleteModal.classList.add('hidden');
+}
+
+document.getElementById('delete-cancel').addEventListener('click', closeDeleteModal);
+document.getElementById('delete-confirm').addEventListener('click', function() {
+  deleteForm.submit();
 });
+deleteModal.addEventListener('click', function(e) {
+  if (e.target === deleteModal) closeDeleteModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeDeleteModal();
+});
+
+(function() {
+  var els = document.querySelectorAll('.encrypted-filename');
+  if (!els.length) return;
+
+  function u8(b64) {
+    return new Uint8Array(atob(b64).split('').map(function(c) { return c.charCodeAt(0); }));
+  }
+
+  // Master key is restored asynchronously by base.html — wait for it
+  function waitForMasterKey() {
+    return new Promise(function(resolve) {
+      if (window.BlindBitMasterKey) return resolve(window.BlindBitMasterKey);
+      var tries = 0;
+      var t = setInterval(function() {
+        if (window.BlindBitMasterKey || ++tries > 20) {
+          clearInterval(t);
+          resolve(window.BlindBitMasterKey);
+        }
+      }, 150);
+    });
+  }
+
+  function importFileKey(fileKeyB64, masterKey) {
+    var raw = u8(fileKeyB64);
+    if (raw.length === 32) {
+      return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['decrypt']);
+    }
+    if (!masterKey) return null;
+    return BlindBitCrypto.unwrapKey(masterKey, fileKeyB64);
+  }
+
+  // Legacy uploads stored plain base64 of the name — only accept printable text
+  function legacyName(b64) {
+    try {
+      var s = new TextDecoder().decode(u8(b64));
+      if (s.length > 0 && s.length < 100 && !/[^\x20-\x7E\u00A0-\uFFFF]/.test(s)) return s;
+    } catch (e) {}
+    return null;
+  }
+
+  (async function() {
+    var masterKey = await waitForMasterKey();
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var encrypted = el.dataset.encrypted;
+      var fileKeyB64 = el.dataset.key;
+      if (!encrypted) continue;
+      try {
+        var name = legacyName(encrypted);
+        if (!name && fileKeyB64) {
+          var key = await importFileKey(fileKeyB64, masterKey);
+          if (key) name = await BlindBitCrypto.decryptFilename(key, encrypted);
+        }
+        if (name) el.textContent = name;
+      } catch (e) {}
+    }
+  })();
+})();
 </script>
 {% endblock %}

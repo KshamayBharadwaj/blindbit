@@ -49,3 +49,4 @@ staticfiles/
 venv/
 *.full
 commit_script.sh
+blindbit/secret_key.txt

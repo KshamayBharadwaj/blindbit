@@ -55,6 +55,30 @@ const BlindBitCrypto = {
     return await crypto.subtle.unwrapKey('raw', wrapped, wrappingKey, { name: 'AES-GCM', iv }, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   },
 
+  // Encrypt a filename with a file key — returns base64(iv || ciphertext)
+  encryptFilename: async (key, name) => {
+    const enc = new TextEncoder();
+    const { ciphertext, iv } = await BlindBitCrypto.encrypt(key, enc.encode(name));
+    const ct = new Uint8Array(ciphertext);
+    const combined = new Uint8Array(iv.length + ct.length);
+    combined.set(iv);
+    combined.set(ct, iv.length);
+    return btoa(String.fromCharCode(...combined));
+  },
+
+  // Decrypt a filename (base64(iv || ciphertext)). Returns null when the
+  // payload is not the current format (e.g. legacy plain-base64 names).
+  decryptFilename: async (key, combinedB64) => {
+    try {
+      const combined = Uint8Array.from(atob(combinedB64), c => c.charCodeAt(0));
+      const iv = combined.slice(0, 12);
+      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, combined.slice(12));
+      return new TextDecoder().decode(decrypted);
+    } catch (e) {
+      return null;
+    }
+  },
+
   // Derive key from passphrase using PBKDF2 (Argonid not available in browser, PBKDF2 is fallback)
   deriveKeyFromPassphrase: async (passphrase, salt) => {
     const enc = new TextEncoder();
