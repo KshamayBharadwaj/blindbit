@@ -5,7 +5,7 @@ import time
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.http import JsonResponse
 from django.core.mail import send_mail
 from django.conf import settings
@@ -448,9 +448,60 @@ def add_device_complete(request):
     return JsonResponse({'status': 'ok', 'device_id': str(device.id)})
 
 
+@login_required
+@require_POST
+def keys_setup(request):
+    """Restore/setup flow for accounts that predate the master-key system.
+    Rebuilds the full key chain in the browser and stores it: recovery-wrapped
+    master key, optional passphrase-wrapped master key, and X25519 keys."""
+    data = json.loads(request.body)
+    user = request.user
+
+    wrapped_mk_recovery = data.get('wrapped_master_key_recovery', '')
+    wrapped_mk_pass = data.get('wrapped_master_key_passphrase', '')
+    passphrase_salt = data.get('passphrase_salt', '')
+    passphrase_enabled = data.get('passphrase_enabled', False)
+    x25519_pub = data.get('x25519_public_key', '')
+    x25519_enc_priv = data.get('encrypted_x25519_private_key', '')
+
+    if not wrapped_mk_recovery or not x25519_pub or not x25519_enc_priv:
+        return JsonResponse({'error': 'Missing required key material'}, status=400)
+
+    passphrase_verifier = ''
+    if wrapped_mk_pass:
+        passphrase_verifier = hashlib.sha256(wrapped_mk_pass.encode()).hexdigest()
+
+    user.wrapped_master_key_recovery = wrapped_mk_recovery
+    user.wrapped_master_key_passphrase = wrapped_mk_pass
+    user.passphrase_salt = passphrase_salt
+    user.passphrase_enabled = passphrase_enabled
+    user.passphrase_verifier = passphrase_verifier
+    user.x25519_public_key = x25519_pub
+    user.encrypted_x25519_private_key = x25519_enc_priv
+    user.recovery_phrase_confirmed = True
+    user.is_onboarded = True
+    user.save()
+    return JsonResponse({'status': 'ok'})
+
+
 def logout_view(request):
     logout(request)
     return redirect('landing')
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def my_keys(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        request.user.x25519_public_key = data.get('x25519_public_key', request.user.x25519_public_key)
+        request.user.encrypted_x25519_private_key = data.get('encrypted_x25519_private_key', request.user.encrypted_x25519_private_key)
+        request.user.save(update_fields=['x25519_public_key', 'encrypted_x25519_private_key'])
+        return JsonResponse({'status': 'ok'})
+    return JsonResponse({
+        'x25519_public_key': request.user.x25519_public_key or '',
+        'encrypted_x25519_private_key': request.user.encrypted_x25519_private_key or '',
+    })
 
 
 @login_required
