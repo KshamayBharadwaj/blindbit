@@ -7,8 +7,9 @@
     <p class="text-sm text-gray-500 mb-6">Grant someone access to this file. Only they will be able to unlock it.</p>
 
     <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4 mb-6">
-      <p class="text-xs font-mono font-bold uppercase text-gray-500 mb-1">File ID</p>
-      <p class="font-mono text-sm">{{ file.id }}</p>
+      <p class="text-xs font-mono font-bold uppercase text-gray-500 mb-1">File</p>
+      <p class="font-mono text-sm encrypted-filename" data-encrypted="{{ file.encrypted_filename }}" data-key="{{ file.wrapped_file_key }}">Protected file</p>
+      <p class="text-xs font-mono text-gray-400 mt-1">{{ file.id }}</p>
     </div>
 
     <form id="share-form" class="space-y-4">
@@ -208,5 +209,30 @@ function showError(msg) {
   errorMsg.textContent = msg;
   errorMsg.classList.remove('hidden');
 }
+
+// Show the plaintext file name (owner always holds the key)
+(function() {
+  var nameEl = document.querySelector('.encrypted-filename');
+  if (!nameEl || !nameEl.dataset.encrypted) return;
+  function waitForMasterKey() {
+    return new Promise(function(resolve) {
+      if (window.BlindBitMasterKey) return resolve(window.BlindBitMasterKey);
+      var tries = 0;
+      var t = setInterval(function() {
+        if (window.BlindBitMasterKey || ++tries > 20) {
+          clearInterval(t);
+          resolve(window.BlindBitMasterKey);
+        }
+      }, 150);
+    });
+  }
+  (async function() {
+    await waitForMasterKey();
+    try {
+      var name = await blindBitOwnFileName(nameEl.dataset.encrypted, nameEl.dataset.key);
+      if (name) nameEl.textContent = name;
+    } catch (e) {}
+  })();
+})();
 </script>
 {% endblock %}

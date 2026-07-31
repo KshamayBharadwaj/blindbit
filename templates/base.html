@@ -165,33 +165,45 @@ async function decryptAndDownload(fileId) {
       throw new Error(err.error || 'Failed to fetch file data');
     }
     var data = await resp.json();
+    var fileKey;
 
     if (data.access === 'shared') {
-      alert('Shared file decryption requires the full key chain (ECDH). This feature will be available soon.');
-      if (btn) { btn.textContent = 'Open'; btn.disabled = false; }
-      return;
+      // Recipient path: recover own X25519 private key, compute the ECDH
+      // shared secret with the sender's ephemeral key, derive the same
+      // wrapping key the sender used, and unwrap the file key.
+      if (!window.BlindBitMasterKey) throw new Error('Master key required but not available');
+      var myKeysResp = await fetch('/accounts/api/my-keys/');
+      var myKeys = await myKeysResp.json();
+      if (!myKeys.encrypted_x25519_private_key) {
+        throw new Error('Your encryption keys are not set up. Re-register your account to generate them.');
+      }
+      var privKeyBytes = await BlindBitCrypto.decryptFromB64(window.BlindBitMasterKey, myKeys.encrypted_x25519_private_key);
+      var privKeyHex = BlindBitX25519.bytesToHex(privKeyBytes);
+      var sharedSecret = await BlindBitX25519.ecdh(privKeyHex, data.ephemeral_public_key);
+      var wrappingKey = await BlindBitX25519.deriveWrappingKey(sharedSecret, data.ephemeral_public_key);
+      fileKey = await BlindBitCrypto.unwrapKey(wrappingKey, data.wrapped_file_key);
+    } else {
+      var fileKeyB64 = data.wrapped_file_key;
+      var fileKeyRaw = U8(fileKeyB64);
+      if (fileKeyRaw.length === 32) {
+        fileKey = await crypto.subtle.importKey('raw', fileKeyRaw, { name: 'AES-GCM' }, false, ['decrypt']);
+      } else {
+        if (!window.BlindBitMasterKey) throw new Error('Master key required but not available');
+        fileKey = await BlindBitCrypto.unwrapKey(window.BlindBitMasterKey, fileKeyB64);
+      }
     }
 
     var ciphertext = U8(data.ciphertext);
-    var fileKeyB64 = data.wrapped_file_key;
     var nonce = U8(data.nonce);
     var mimeType = data.mime_type || 'application/octet-stream';
 
-    var fileKeyRaw = U8(fileKeyB64);
-    var key;
-    if (fileKeyRaw.length === 32) {
-      key = await crypto.subtle.importKey('raw', fileKeyRaw, { name: 'AES-GCM' }, false, ['decrypt']);
-    } else {
-      if (!window.BlindBitMasterKey) throw new Error('Master key required but not available');
-      key = await BlindBitCrypto.unwrapKey(window.BlindBitMasterKey, fileKeyB64);
-    }
-    var originalName = await BlindBitCrypto.decryptFilename(key, data.encrypted_filename);
+    var originalName = await BlindBitCrypto.decryptFilename(fileKey, data.encrypted_filename);
     if (!originalName) {
       try {
         originalName = new TextDecoder().decode(U8(data.encrypted_filename));
       } catch (e) { originalName = null; }
     }
-    var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce }, key, ciphertext);
+    var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce }, fileKey, ciphertext);
 
     var blob = new Blob([decrypted], { type: mimeType });
     var url = URL.createObjectURL(blob);
@@ -208,6 +220,51 @@ async function decryptAndDownload(fileId) {
     alert('Decryption failed: ' + err.message);
     if (btn) { btn.textContent = 'Open'; btn.disabled = false; }
   }
+}
+
+// Decrypt the plaintext name of a file shared with the current user.
+// Same chain as decryptAndDownload's shared branch: unseal our own X25519
+// private key with the master key, ECDH with the sharer's ephemeral key,
+// derive the wrapping key, unwrap the per-share file key, decrypt filename.
+var blindBitSealedPriv = null;
+async function blindBitSharedFileName(encryptedFilename, shareWrappedKey, ephemeralPublicKey) {
+  if (!window.BlindBitMasterKey) return null;
+  if (!blindBitSealedPriv) {
+    var myKeysResp = await fetch('/accounts/api/my-keys/');
+    var myKeys = await myKeysResp.json();
+    if (!myKeys.encrypted_x25519_private_key) return null;
+    blindBitSealedPriv = myKeys.encrypted_x25519_private_key;
+  }
+  var privKeyBytes = await BlindBitCrypto.decryptFromB64(window.BlindBitMasterKey, blindBitSealedPriv);
+  var sharedSecret = await BlindBitX25519.ecdh(BlindBitX25519.bytesToHex(privKeyBytes), ephemeralPublicKey);
+  var wrappingKey = await BlindBitX25519.deriveWrappingKey(sharedSecret, ephemeralPublicKey);
+  var fileKey = await BlindBitCrypto.unwrapKey(wrappingKey, shareWrappedKey);
+  return await BlindBitCrypto.decryptFilename(fileKey, encryptedFilename);
+}
+
+// Decrypt the plaintext name of one of our own files: legacy uploads stored
+// plain base64 of the name; modern ones use a raw-32-byte or
+// master-key-wrapped AES-GCM file key.
+async function blindBitOwnFileName(encryptedFilename, wrappedFileKey) {
+  var name = null;
+  try {
+    var rawName = new Uint8Array(atob(encryptedFilename).split('').map(function(c) { return c.charCodeAt(0); }));
+    var s = new TextDecoder().decode(rawName);
+    if (s.length > 0 && s.length < 100 && !/[^\x20-\x7E\u00A0-\uFFFF]/.test(s)) name = s;
+  } catch (e) {}
+  if (name || !wrappedFileKey) return name;
+  if (!window.BlindBitMasterKey) return null;
+  var fileKey;
+  var raw = null;
+  try {
+    raw = new Uint8Array(atob(wrappedFileKey).split('').map(function(c) { return c.charCodeAt(0); }));
+  } catch (e) {}
+  if (raw && raw.length === 32) {
+    fileKey = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['decrypt']);
+  } else {
+    fileKey = await BlindBitCrypto.unwrapKey(window.BlindBitMasterKey, wrappedFileKey);
+  }
+  return await BlindBitCrypto.decryptFilename(fileKey, encryptedFilename);
 }
 </script>
 </body>
