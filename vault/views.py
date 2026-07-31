@@ -92,7 +92,7 @@ def download_file_data(request, file_id):
         'ciphertext': base64.b64encode(share.file.ciphertext).decode('ascii'),
         'wrapped_file_key': share.wrapped_file_key,
         'ephemeral_public_key': share.ephemeral_public_key,
-        'nonce': share.nonce,
+        'nonce': share.file.nonce,
         'auth_tag': share.file.auth_tag,
         'mime_type': share.file.mime_type,
         'encrypted_filename': share.file.encrypted_filename,
@@ -114,6 +114,20 @@ def delete_file(request, file_id):
     encrypted_file = get_object_or_404(EncryptedFile, id=file_id, owner=request.user)
     encrypted_file.delete()
     return redirect('vault:dashboard')
+
+@login_required
+@require_POST
+def rewrap_file_key(request, file_id):
+    """Re-wrap a file's key under a new master key. The file ciphertext and
+    any existing shares are untouched — the file key itself never changes."""
+    file = get_object_or_404(EncryptedFile, id=file_id, owner=request.user)
+    data = json.loads(request.body)
+    new_wrapped = data.get('wrapped_file_key', '')
+    if not new_wrapped:
+        return JsonResponse({'error': 'Missing wrapped_file_key'}, status=400)
+    file.wrapped_file_key = new_wrapped
+    file.save(update_fields=['wrapped_file_key'])
+    return JsonResponse({'status': 'ok'})
 
 @login_required
 def file_list_api(request):
