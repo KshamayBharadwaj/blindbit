@@ -234,3 +234,280 @@
     
 {% include "accounts/register_recovery_card.html" %}
 {% endblock %}
+
+{% block extra_scripts %}
+<script>
+var registerForm = document.getElementById('register-form');
+var createPasskeyBtn = document.getElementById('create-passkey-btn');
+var registerBtn = document.getElementById('register-btn');
+var passphraseSection = document.getElementById('passphrase-section');
+var passphraseInput = document.getElementById('passphrase');
+var errorMsg = document.getElementById('error-msg');
+var registerCard = document.getElementById('register-card');
+var recoveryCard = document.getElementById('recovery-card');
+var recoveryCodeDisplay = document.getElementById('recovery-code-display');
+
+var regState = { credential: null, username: '', email: '' };
+
+function showError(msg) {
+  errorMsg.textContent = msg;
+  errorMsg.classList.remove('hidden');
+}
+
+function getDeviceName() {
+  const ua = navigator.userAgent;
+  let os = 'Unknown OS';
+  if (ua.includes('Win')) os = 'Windows';
+  else if (ua.includes('Mac') && !ua.includes('iPhone') && !ua.includes('iPad')) os = 'macOS';
+  else if (ua.includes('Linux') && !ua.includes('Android')) os = 'Linux';
+  else if (ua.includes('Android')) os = 'Android';
+  else if (ua.includes('iPhone') || ua.includes('iPad') || ua.includes('iPod')) os = 'iOS';
+  let browser = 'Browser';
+  if (ua.includes('Chrome') && !ua.includes('Edg') && !ua.includes('OPR')) browser = 'Chrome';
+  else if (ua.includes('Firefox') && !ua.includes('Seamonkey')) browser = 'Firefox';
+  else if (ua.includes('Safari') && !ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Safari';
+  else if (ua.includes('Edg')) browser = 'Edge';
+  else if (ua.includes('OPR') || ua.includes('Opera')) browser = 'Opera';
+  return `${browser} on ${os}`;
+}
+
+function b642ab(b64) {
+  b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); });
+}
+
+function ab2b64(ab) {
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(ab)));
+}
+
+function hex(salt) {
+  return Array.from(salt).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+// 8 groups of 5 chars from A-Z2-9 (matches the recovery format validation)
+function generateRecoveryCode() {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(40));
+  const groups = [];
+  for (let g = 0; g < 8; g++) {
+    let s = '';
+    for (let i = 0; i < 5; i++) s += alphabet[bytes[g * 5 + i] % alphabet.length];
+    groups.push(s);
+  }
+  return groups.join('-');
+}
+
+// ── Passphrase strength meter ──
+var strengthSection = document.getElementById('passphrase-strength');
+var strengthBar = document.getElementById('strength-bar');
+var strengthText = document.getElementById('strength-text');
+
+passphraseInput.addEventListener('input', function() {
+  const v = passphraseInput.value;
+  if (!v) { strengthSection.classList.add('hidden'); return; }
+  strengthSection.classList.remove('hidden');
+  let pct = 0, label = 'Too short', color = '#DC2626';
+  if (v.length >= 12) {
+    let score = 1;
+    if (v.length >= 16) score++;
+    if (/[^A-Za-z0-9]/.test(v) && /[A-Z]/.test(v) && /[0-9]/.test(v)) score++;
+    if (score >= 2) pct = 66, label = 'Good', color = '#1B4DFF';
+    if (score >= 3) pct = 100, label = 'Strong', color = '#16A34A';
+  }
+  if (v.length >= 12 && !pct) pct = 33, label = 'Weak', color = '#DC2626';
+  strengthBar.style.width = pct + '%';
+  strengthBar.style.background = color;
+  strengthText.textContent = label;
+  strengthText.style.color = color;
+});
+
+// ── Step 1: Create Passkey ──
+createPasskeyBtn.addEventListener('click', async () => {
+  const username = document.getElementById('username').value.trim();
+  const email = document.getElementById('email').value.trim();
+  errorMsg.classList.add('hidden');
+
+  if (!username || !email) {
+    showError('Please enter both username and email before creating your passkey.');
+    return;
+  }
+
+  createPasskeyBtn.disabled = true;
+  createPasskeyBtn.textContent = 'Contacting server...';
+
+  try {
+    const resp = await fetch('{% url "accounts:registration_options" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({ username, email }),
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    data.challenge = b642ab(data.challenge);
+    data.user.id = b642ab(data.user.id);
+
+    const credential = await navigator.credentials.create({ publicKey: data });
+    const attResp = credential.response;
+
+    regState.credential = {
+      id: credential.id,
+      raw_id: ab2b64(credential.rawId),
+      response: {
+        client_data_json: ab2b64(attResp.clientDataJSON),
+        attestation_object: ab2b64(attResp.attestationObject),
+      },
+    };
+    regState.username = username;
+    regState.email = email;
+
+    createPasskeyBtn.classList.add('brutal-btn-primary');
+    createPasskeyBtn.classList.remove('brutal-btn-secondary');
+    createPasskeyBtn.textContent = 'Passkey Created ✓';
+    passphraseSection.classList.remove('hidden');
+    registerBtn.disabled = false;
+    registerBtn.classList.remove('brutal-btn-disabled');
+    registerBtn.classList.add('brutal-btn-primary');
+    registerBtn.textContent = 'Complete Registration';
+  } catch (err) {
+    showError(err.message || 'Passkey creation failed. Please try again.');
+    createPasskeyBtn.disabled = false;
+    createPasskeyBtn.innerHTML = '<svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Create Passkey';
+  }
+});
+
+// ── Step 2: Complete Registration ──
+registerForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!regState.credential) {
+    showError('Create a passkey first.');
+    return;
+  }
+  errorMsg.classList.add('hidden');
+
+  const passphrase = passphraseInput.value;
+  if (passphrase && passphrase.length < 12) {
+    showError('Passphrase must be at least 12 characters, or leave it empty to skip.');
+    return;
+  }
+
+  registerBtn.disabled = true;
+  registerBtn.textContent = 'Creating your vault...';
+
+  try {
+    // Master key is derived from the recovery code — recovery page rebuilds
+    // the exact same key from the code, so the vault survives device loss.
+    const recoveryCode = generateRecoveryCode();
+    const recoverySalt = new TextEncoder().encode('BlindBit recovery key derivation');
+    const masterKey = await BlindBitCrypto.deriveKeyFromPassphrase(recoveryCode, recoverySalt);
+
+    const rawMk = await crypto.subtle.exportKey('raw', masterKey);
+    sessionStorage.setItem('blindbit_master_key_raw', btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))));
+    window.BlindBitMasterKey = masterKey;
+
+    // X25519 identity keypair: public key stored in plaintext so anyone can
+    // share with us; private key is sealed under the master key so only the
+    // holder of the master key can decrypt shares addressed to us.
+    const x25519 = await BlindBitX25519.generateKeypair();
+    const privKeyBytes = BlindBitX25519.hexToBytes(x25519.privateKey);
+    const encryptedX25519Priv = await BlindBitCrypto.encryptToB64(masterKey, privKeyBytes);
+
+    const payload = {
+      username: regState.username,
+      email: regState.email,
+      display_name: regState.username,
+      credential: regState.credential,
+      device_name: getDeviceName(),
+      prf_enabled: false,
+      wrapped_master_key_prf: '',
+      encrypted_x25519_private_key: encryptedX25519Priv,
+      x25519_public_key: x25519.publicKey,
+      passphrase_enabled: false,
+      wrapped_master_key_passphrase: '',
+      passphrase_salt: '',
+    };
+
+    if (passphrase) {
+      const salt = crypto.getRandomValues(new Uint8Array(32));
+      const wrappingKey = await BlindBitCrypto.deriveKeyFromPassphrase(passphrase, salt);
+      payload.passphrase_enabled = true;
+      payload.passphrase_salt = hex(salt);
+      payload.wrapped_master_key_passphrase = await BlindBitCrypto.wrapKey(wrappingKey, masterKey);
+    }
+
+    // Self-wrapped marker: recovery is keyed by the code itself (see recovery.html)
+    payload.wrapped_master_key_recovery = await BlindBitCrypto.wrapKey(masterKey, masterKey);
+
+    const resp = await fetch('{% url "accounts:register_begin" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.error || 'Registration failed');
+
+    await fetch('{% url "accounts:confirm_recovery" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({ wrapped_master_key_recovery: payload.wrapped_master_key_recovery }),
+    });
+
+    registerCard.classList.add('hidden');
+    recoveryCard.classList.remove('hidden');
+    recoveryCodeDisplay.textContent = recoveryCode;
+    document.getElementById('recovery-code-display').scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    showError(err.message || 'Registration failed. Please try again.');
+    registerBtn.disabled = false;
+    registerBtn.textContent = 'Complete Registration';
+  }
+});
+
+document.getElementById('toggle-passphrase-vis').addEventListener('click', () => {
+  const input = document.getElementById('passphrase');
+  const eye = document.getElementById('eye-icon');
+  const eyeOff = document.getElementById('eye-off-icon');
+  const isPass = input.type === 'password';
+  input.type = isPass ? 'text' : 'password';
+  eye.classList.toggle('hidden', !isPass);
+  eyeOff.classList.toggle('hidden', isPass);
+});
+
+// ── Recovery card actions ──
+document.getElementById('copy-recovery-btn').addEventListener('click', async () => {
+  const code = recoveryCodeDisplay.textContent.trim();
+  try {
+    await navigator.clipboard.writeText(code);
+    document.getElementById('copy-recovery-btn').textContent = 'Copied ✓';
+    setTimeout(function() { document.getElementById('copy-recovery-btn').textContent = 'Copy Code'; }, 2000);
+  } catch (err) {
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    document.getElementById('copy-recovery-btn').textContent = 'Copied ✓';
+    setTimeout(function() { document.getElementById('copy-recovery-btn').textContent = 'Copy Code'; }, 2000);
+  }
+});
+
+document.getElementById('download-recovery-btn').addEventListener('click', () => {
+  const code = recoveryCodeDisplay.textContent.trim();
+  const blob = new Blob([
+    'BlindBit Recovery Code\n======================\n\n',
+    code,
+    '\n\nKeep this code secret. Anyone with it can unlock your vault.',
+    '\nStore it in a password manager or write it down.',
+  ], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'blindbit-recovery-code.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+</script>
+{% endblock %}
