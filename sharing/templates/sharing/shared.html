@@ -3,25 +3,36 @@
 {% block content_app %}
 <div class="p-6 sm:p-8 lg:p-10 max-w-4xl">
   <div class="mb-8">
-    <h1 class="text-2xl font-bold">Shared With You</h1>
-    <p class="text-sm text-gray-500 mt-0.5">Files other people have shared with you.</p>
+    <h1 class="text-2xl font-bold">Shared</h1>
+    <p class="text-sm text-gray-500 mt-0.5">Manage files shared with you and files you have shared.</p>
   </div>
 
-  <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal">
+  <div class="flex gap-2 mb-6">
+    <button id="tab-incoming" class="font-mono font-bold text-xs uppercase px-4 py-2 border-[2.5px] border-[#0A0A0A] bg-[#0A0A0A] text-white shadow-brutal cursor-pointer">
+      Shared With You
+      {% if shares %}<span class="ml-1.5 text-[#CCFF00]">{{ shares|length }}</span>{% endif %}
+    </button>
+    <button id="tab-outgoing" class="font-mono font-bold text-xs uppercase px-4 py-2 border-[2.5px] border-[#0A0A0A] bg-white text-[#0A0A0A] shadow-brutal hover:bg-[#E8E8E2] cursor-pointer">
+      Shared By You
+      {% if sent_shares %}<span class="ml-1.5 text-[#1B4DFF]">{{ sent_shares|length }}</span>{% endif %}
+    </button>
+  </div>
+
+  <div id="panel-incoming" class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal">
     {% if shares %}
     <div class="divide-y-[2.5px] divide-[#0A0A0A]">
       {% for share in shares %}
-      <div class="flex items-center justify-between p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors">
         <div class="flex items-center gap-3 min-w-0 flex-1">
           <div class="w-9 h-9 bg-[#1B4DFF] border-[2.5px] border-[#0A0A0A] flex items-center justify-center flex-shrink-0">
             <svg class="w-4.5 h-4.5 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
           <div class="min-w-0">
-            <p class="font-semibold truncate">From <span class="text-[#1B4DFF]">{{ share.owner.username }}</span></p>
-            <p class="text-xs text-gray-400">{{ share.created_at|date:"M j, Y" }}</p>
+            <p class="font-semibold truncate shared-filename" data-encrypted="{{ share.file.encrypted_filename }}" data-key="{{ share.wrapped_file_key }}" data-ephemeral="{{ share.ephemeral_public_key }}">Protected file</p>
+            <p class="text-xs text-gray-400">From <span class="text-[#1B4DFF]">{{ share.owner.username }}</span> · {{ share.created_at|date:"M j, Y" }}</p>
           </div>
         </div>
-        <button data-download-btn="{{ share.file.id }}" onclick="decryptAndDownload('{{ share.file.id }}')" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-4 py-2 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex-shrink-0 ml-3 cursor-pointer">Open</button>
+        <button data-download-btn="{{ share.file.id }}" onclick="decryptAndDownload('{{ share.file.id }}')" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-4 py-2 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex-shrink-0 sm:ml-3 cursor-pointer self-start sm:self-auto">Open</button>
       </div>
       {% endfor %}
     </div>
@@ -35,5 +46,98 @@
     </div>
     {% endif %}
   </div>
+
+  <div id="panel-outgoing" class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal hidden">
+    {% if sent_shares %}
+    <div class="divide-y-[2.5px] divide-[#0A0A0A]">
+      {% for share in sent_shares %}
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors">
+        <div class="flex items-center gap-3 min-w-0 flex-1">
+          <div class="w-9 h-9 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center flex-shrink-0">
+            <svg class="w-4.5 h-4.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+          </div>
+          <div class="min-w-0">
+            <p class="font-semibold truncate sent-filename" data-encrypted="{{ share.file.encrypted_filename }}" data-key="{{ share.file.wrapped_file_key }}">Protected file</p>
+            <p class="text-xs text-gray-400">To <span class="text-[#1B4DFF]">{{ share.recipient.username }}</span> · {{ share.created_at|date:"M j, Y" }}</p>
+          </div>
+        </div>
+        {% if share.revoked %}
+        <span class="text-xs font-mono font-bold uppercase text-red-500 flex-shrink-0">Revoked</span>
+        {% else %}
+        <form method="post" action="{% url 'sharing:revoke_share' share.id %}" onsubmit="return confirm('Revoke access for {{ share.recipient.username }}?')">
+          {% csrf_token %}
+          <button type="submit" class="font-mono font-bold text-xs uppercase text-red-500 bg-transparent border-0 cursor-pointer px-3 py-1.5 hover:text-red-700 flex-shrink-0">Revoke</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="p-12 text-center">
+      <div class="w-16 h-16 mx-auto mb-4 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
+        <svg class="w-8 h-8 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+      </div>
+      <p class="text-gray-500">You haven't shared any files yet</p>
+      <p class="text-sm text-gray-400 mt-1">Share a file from your vault to see it here.</p>
+    </div>
+    {% endif %}
+  </div>
 </div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+(function() {
+  function waitForMasterKey() {
+    return new Promise(function(resolve) {
+      if (window.BlindBitMasterKey) return resolve(window.BlindBitMasterKey);
+      var tries = 0;
+      var t = setInterval(function() {
+        if (window.BlindBitMasterKey || ++tries > 20) {
+          clearInterval(t);
+          resolve(window.BlindBitMasterKey);
+        }
+      }, 150);
+    });
+  }
+
+  var tabIncoming = document.getElementById('tab-incoming');
+  var tabOutgoing = document.getElementById('tab-outgoing');
+  var panelIncoming = document.getElementById('panel-incoming');
+  var panelOutgoing = document.getElementById('panel-outgoing');
+  function activate(tab, panel) {
+    var tabs = [tabIncoming, tabOutgoing];
+    var panels = [panelIncoming, panelOutgoing];
+    for (var i = 0; i < tabs.length; i++) {
+      var active = tabs[i] === tab;
+      tabs[i].className = 'font-mono font-bold text-xs uppercase px-4 py-2 border-[2.5px] border-[#0A0A0A] shadow-brutal cursor-pointer ' + (active ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#0A0A0A] hover:bg-[#E8E8E2]');
+      panels[i].classList.toggle('hidden', panels[i] !== panel);
+    }
+  }
+  tabIncoming.addEventListener('click', function() { activate(tabIncoming, panelIncoming); });
+  tabOutgoing.addEventListener('click', function() { activate(tabOutgoing, panelOutgoing); });
+
+  // Decrypt file names in both panels once the master key is available
+  (async function() {
+    await waitForMasterKey();
+    var sharedEls = document.querySelectorAll('.shared-filename');
+    for (var i = 0; i < sharedEls.length; i++) {
+      var s = sharedEls[i];
+      if (!s.dataset.encrypted || !s.dataset.key || !s.dataset.ephemeral) continue;
+      try {
+        var name = await blindBitSharedFileName(s.dataset.encrypted, s.dataset.key, s.dataset.ephemeral);
+        if (name) s.textContent = name;
+      } catch (e) {}
+    }
+    var sentEls = document.querySelectorAll('.sent-filename');
+    for (var j = 0; j < sentEls.length; j++) {
+      var t = sentEls[j];
+      if (!t.dataset.encrypted) continue;
+      try {
+        var tname = await blindBitOwnFileName(t.dataset.encrypted, t.dataset.key);
+        if (tname) t.textContent = tname;
+      } catch (e) {}
+    }
+  })();
+})();
+</script>
 {% endblock %}

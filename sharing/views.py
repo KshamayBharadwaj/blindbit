@@ -8,9 +8,10 @@ from vault.models import EncryptedFile
 from accounts.models import User
 
 @login_required
-def shared_with_me(request):
-    shares = FileShare.objects.filter(recipient=request.user, revoked=False)
-    return render(request, 'sharing/shared_with_me.html', {'shares': shares})
+def shared(request):
+    shares = FileShare.objects.filter(recipient=request.user, revoked=False).select_related('owner', 'file')
+    sent_shares = FileShare.objects.filter(owner=request.user).select_related('recipient', 'file').order_by('-created_at')
+    return render(request, 'sharing/shared.html', {'shares': shares, 'sent_shares': sent_shares})
 
 @login_required
 def share_view(request, file_id):

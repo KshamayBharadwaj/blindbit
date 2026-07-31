@@ -4,7 +4,7 @@ from . import views
 app_name = 'sharing'
 
 urlpatterns = [
-    path('shared-with-me/', views.shared_with_me, name='shared_with_me'),
+    path('', views.shared, name='shared'),
     path('file/<uuid:file_id>/', views.share_view, name='share_view'),
     path('api/create/', views.create_share, name='create_share'),
     path('api/revoke/<uuid:share_id>/', views.revoke_share, name='revoke_share'),
