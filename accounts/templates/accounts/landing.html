@@ -5,8 +5,8 @@
   <h1 style="font-size:3rem;margin:0">BlindBit</h1>
   <p style="font-size:1.2rem;color:#666">Zero-knowledge encrypted cloud vault</p>
   <div style="margin-top:40px;display:flex;gap:16px;justify-content:center">
-    <a href="{% url 'register' %}" style="padding:12px 32px;background:#000;color:#fff;text-decoration:none;border-radius:6px">Get Started</a>
-    <a href="{% url 'login' %}" style="padding:12px 32px;border:2px solid #000;color:#000;text-decoration:none;border-radius:6px">Sign In</a>
+    <a href="{% url 'accounts:register' %}" style="padding:12px 32px;background:#000;color:#fff;text-decoration:none;border-radius:6px">Get Started</a>
+    <a href="{% url 'accounts:login' %}" style="padding:12px 32px;border:2px solid #000;color:#000;text-decoration:none;border-radius:6px">Sign In</a>
   </div>
 </div>
 {% endblock %}

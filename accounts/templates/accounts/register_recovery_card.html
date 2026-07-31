@@ -1,0 +1,31 @@
+{% comment %}
+Recovery code card - shown after successful registration.
+This is a template fragment included in register.html.
+The JavaScript in register.html will populate and show this card when registration succeeds.
+{% endcomment %}
+
+<div id="recovery-card" class="hidden mt-6 p-6 bg-[#FAFAF5] border-[3px] border-[#0A0A0A] shadow-brutal">
+  <div class="flex items-center gap-2 mb-4">
+    <span class="brutal-tag">RECOVERY CODE</span>
+    <div class="h-[2px] flex-1 bg-[#0A0A0A]"></div>
+  </div>
+  <p class="text-xs text-gray-500 mb-4 font-mono">
+    Save this code securely. It is the <strong>only way</strong> to recover your account if you lose all devices.
+  </p>
+  <div id="recovery-code-display" class="font-mono text-sm tracking-widest break-all bg-white border-[2.5px] border-[#0A0A0A] p-4 mb-4 select-all" style="user-select: all;"></div>
+  <div class="flex items-center gap-3">
+    <button id="copy-recovery-btn" type="button"
+      class="brutal-btn brutal-btn-secondary px-4 py-2.5 flex items-center gap-2 flex-1 justify-center">
+      <svg class="w-4 h-4 stroke-current stroke-2 fill-none" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy Code
+    </button>
+    <button id="download-recovery-btn" type="button"
+      class="brutal-btn brutal-btn-secondary px-4 py-2.5 flex items-center gap-2 flex-1 justify-center">
+      <svg class="w-4 h-4 stroke-current stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download .txt
+    </button>
+  </div>
+  <p class="text-[0.55rem] text-gray-400 mt-3 font-mono uppercase tracking-wider text-center">
+    This code will not be shown again. Store it in a password manager or write it down.
+  </p>
+</div>
