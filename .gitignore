@@ -50,3 +50,5 @@ venv/
 *.full
 commit_script.sh
 blindbit/secret_key.txt
+server.log
+server_err.log

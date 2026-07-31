@@ -62,11 +62,18 @@
           </div>
         </div>
         {% if share.revoked %}
-        <span class="text-xs font-mono font-bold uppercase text-red-500 flex-shrink-0">Revoked</span>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <span class="text-xs font-mono font-bold uppercase text-red-500">Revoked</span>
+          <button type="button" onclick="var b=this; BlindBitConfirm.show(function(){ blindBitReshare(b) }, 'Give access back to {{ share.recipient.username|escapejs }}? They will be able to unlock this file again.', { title: 'Re-give Access?', confirmLabel: 'Re-share' })" data-file-id="{{ share.file.id }}" data-recipient="{{ share.recipient.username }}" data-file-key="{{ share.file.wrapped_file_key }}" class="font-mono font-bold text-xs uppercase text-[#1B4DFF] bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-blue-700">Re-share</button>
+          <form method="post" action="{% url 'sharing:delete_share' share.id %}">
+            {% csrf_token %}
+            <button type="submit" onclick="return BlindBitConfirm(this.form, 'Delete this share from your history? This cannot be undone.', { title: 'Delete Share?', confirmLabel: 'Delete' })" class="font-mono font-bold text-xs uppercase text-gray-400 bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-red-700">Delete</button>
+          </form>
+        </div>
         {% else %}
-        <form method="post" action="{% url 'sharing:revoke_share' share.id %}" onsubmit="return confirm('Revoke access for {{ share.recipient.username }}?')">
+        <form method="post" action="{% url 'sharing:revoke_share' share.id %}">
           {% csrf_token %}
-          <button type="submit" class="font-mono font-bold text-xs uppercase text-red-500 bg-transparent border-0 cursor-pointer px-3 py-1.5 hover:text-red-700 flex-shrink-0">Revoke</button>
+          <button type="submit" onclick="return BlindBitConfirm(this.form, 'Are you sure you want to revoke this access for {{ share.recipient.username|escapejs }}? They will no longer be able to unlock this file.', { title: 'Revoke Access?', confirmLabel: 'Revoke' })" class="font-mono font-bold text-xs uppercase text-red-500 bg-transparent border-0 cursor-pointer px-3 py-1.5 hover:text-red-700 flex-shrink-0">Revoke</button>
         </form>
         {% endif %}
       </div>
