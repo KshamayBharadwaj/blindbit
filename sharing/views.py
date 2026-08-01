@@ -41,19 +41,25 @@ def create_share(request):
     if not recipient.x25519_public_key:
         return JsonResponse({'error': 'Recipient has not set up encryption keys'}, status=400)
 
-    share, created = FileShare.objects.get_or_create(
-        file=file,
-        recipient=recipient,
-        defaults={
-            'owner': request.user,
-            'wrapped_file_key': data.get('wrapped_file_key', ''),
-            'ephemeral_public_key': data.get('ephemeral_public_key', ''),
-            'nonce': data.get('nonce', ''),
-        }
-    )
-    if not created:
-        return JsonResponse({'error': 'Already shared with this user'}, status=400)
+    share = FileShare.objects.filter(file=file, recipient=recipient).first()
+    if share:
+        if not share.revoked:
+            return JsonResponse({'error': 'Already shared with this user'}, status=400)
+        share.wrapped_file_key = data.get('wrapped_file_key', '')
+        share.ephemeral_public_key = data.get('ephemeral_public_key', '')
+        share.nonce = data.get('nonce', '')
+        share.revoked = False
+        share.save()
+        return JsonResponse({'status': 'ok', 'share_id': str(share.id)})
 
+    share = FileShare.objects.create(
+        file=file,
+        owner=request.user,
+        recipient=recipient,
+        wrapped_file_key=data.get('wrapped_file_key', ''),
+        ephemeral_public_key=data.get('ephemeral_public_key', ''),
+        nonce=data.get('nonce', ''),
+    )
     return JsonResponse({'status': 'ok', 'share_id': str(share.id)})
 
 @login_required
@@ -62,6 +68,13 @@ def revoke_share(request, share_id):
     share = get_object_or_404(FileShare, id=share_id, owner=request.user)
     share.revoked = True
     share.save()
+    return JsonResponse({'status': 'ok'})
+
+@login_required
+@require_POST
+def delete_share(request, share_id):
+    share = get_object_or_404(FileShare, id=share_id, owner=request.user)
+    share.delete()
     return JsonResponse({'status': 'ok'})
 
 @login_required

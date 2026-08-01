@@ -148,6 +148,26 @@
   </main>
   {% endif %}
 
+  <!-- Confirmation modal -->
+  <div id="confirm-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div id="confirm-backdrop" class="absolute inset-0 bg-blindbit-black/60"></div>
+    <div class="relative bg-white border-[2.5px] border-blindbit-black shadow-brutal-lg w-full max-w-sm p-6">
+      <div class="flex items-start gap-3 mb-5">
+        <div class="w-10 h-10 bg-[#E8E8E2] border-[2.5px] border-blindbit-black flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 stroke-red-500 stroke-2 fill-none" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div>
+          <h3 id="confirm-title" class="font-bold text-lg leading-tight">Are you sure?</h3>
+          <p id="confirm-message" class="text-sm text-gray-500 mt-1"></p>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <button id="confirm-cancel" type="button" class="flex-1 font-mono font-bold text-xs tracking-wider uppercase bg-white text-blindbit-black border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:bg-[#E8E8E2] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Cancel</button>
+        <button id="confirm-ok" type="button" class="flex-1 font-mono font-bold text-xs tracking-wider uppercase bg-red-500 text-white border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:bg-red-600 hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   {% block extra_scripts %}{% endblock %}
 
 <script src="{% static 'js/crypto.js' %}"></script>
@@ -168,6 +188,109 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeSidebar();
 });
 window.BlindBitMasterKey = null;
+
+// Custom confirmation modal — replaces the default browser confirm() popup
+var BlindBitConfirm = (function() {
+  var pendingAction = null;
+  var modal = document.getElementById('confirm-modal');
+  var titleEl = document.getElementById('confirm-title');
+  var msgEl = document.getElementById('confirm-message');
+  var okBtn = document.getElementById('confirm-ok');
+  var cancelBtn = document.getElementById('confirm-cancel');
+  var backdrop = document.getElementById('confirm-backdrop');
+
+  function show(action, message, opts) {
+    opts = opts || {};
+    pendingAction = action;
+    titleEl.textContent = opts.title || 'Are you sure?';
+    msgEl.textContent = message || '';
+    okBtn.textContent = opts.confirmLabel || 'Confirm';
+    modal.classList.remove('hidden');
+    okBtn.focus();
+    return false;
+  }
+  function hide() {
+    pendingAction = null;
+    modal.classList.add('hidden');
+  }
+  cancelBtn.addEventListener('click', hide);
+  backdrop.addEventListener('click', hide);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) hide();
+  });
+  okBtn.addEventListener('click', function() {
+    if (!pendingAction) return;
+    var action = pendingAction;
+    hide();
+    if (typeof action === 'function') { action(); } else { action.submit(); }
+  });
+  return { show: show };
+})();
+
+function getCookie(name) {
+  var parts = document.cookie.split('; ');
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i].split('=');
+    if (p[0] === name) return decodeURIComponent(p.slice(1).join('='));
+  }
+  return null;
+}
+
+// Re-give access to a previously revoked share: unwrap the file key with the
+// owner's master key, re-wrap it for the recipient via fresh ECDH, and
+// re-activate the share server-side.
+async function blindBitReshare(btn) {
+  if (!window.BlindBitMasterKey) {
+    alert('Your master key is not available in this session. Log out and log in again.');
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Re-sharing...'; }
+  try {
+    var fileId = btn.dataset.fileId;
+    var recipientUsername = btn.dataset.recipient;
+    var fileKeyB64 = btn.dataset.fileKey;
+
+    var lookup = await fetch('/sharing/api/lookup-user/?q=' + encodeURIComponent(recipientUsername));
+    var data = await lookup.json();
+    var user = null;
+    for (var i = 0; i < data.users.length; i++) {
+      if (data.users[i].username === recipientUsername) user = data.users[i];
+    }
+    if (!user) throw new Error('Recipient not found');
+    if (!user.x25519_public_key) throw new Error('Recipient has not set up encryption keys — they need to re-register.');
+
+    var fileKeyRaw = BlindBitCrypto.base64ToBuffer(fileKeyB64);
+    var fileKey;
+    if (fileKeyRaw.length === 32) {
+      fileKey = await crypto.subtle.importKey('raw', fileKeyRaw, { name: 'AES-GCM' }, true, ['wrapKey']);
+    } else {
+      fileKey = await BlindBitCrypto.unwrapKey(window.BlindBitMasterKey, fileKeyB64);
+    }
+
+    var ephemeral = await BlindBitX25519.generateKeypair();
+    var sharedSecret = await BlindBitX25519.ecdh(ephemeral.privateKey, user.x25519_public_key);
+    var wrappingKey = await BlindBitX25519.deriveWrappingKey(sharedSecret, ephemeral.publicKey);
+    var wrappedFileKey = await BlindBitCrypto.wrapKey(wrappingKey, fileKey);
+
+    var resp = await fetch('/sharing/api/create/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({
+        file_id: fileId,
+        recipient: recipientUsername,
+        wrapped_file_key: wrappedFileKey,
+        ephemeral_public_key: ephemeral.publicKey,
+        nonce: '',
+      }),
+    });
+    var result = await resp.json();
+    if (result.status === 'ok') { window.location.reload(); return; }
+    throw new Error(result.error || 'Re-share failed');
+  } catch (err) {
+    alert(err.message || 'Failed to re-share');
+    if (btn) { btn.disabled = false; btn.textContent = 'Re-share'; }
+  }
+}
 
 // Restore master key from session storage on every page load
 (function() {
