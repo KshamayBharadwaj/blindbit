@@ -8,26 +8,26 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
       <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
-        <p class="text-xs font-mono font-bold uppercase text-gray-500">Size</p>
+        <p class="text-xs font-mono font-bold text-gray-500">Size</p>
         <p class="font-semibold">{{ file.original_size|filesizeformat }}</p>
       </div>
       <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
-        <p class="text-xs font-mono font-bold uppercase text-gray-500">Type</p>
+        <p class="text-xs font-mono font-bold text-gray-500">Type</p>
         <p class="font-semibold truncate">{{ file.mime_type }}</p>
       </div>
       <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
-        <p class="text-xs font-mono font-bold uppercase text-gray-500">Uploaded</p>
+        <p class="text-xs font-mono font-bold text-gray-500">Uploaded</p>
         <p class="font-semibold">{{ file.uploaded_at|date:"M j, Y g:i A" }}</p>
       </div>
       <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
-        <p class="text-xs font-mono font-bold uppercase text-gray-500">Security</p>
+        <p class="text-xs font-mono font-bold text-gray-500">Security</p>
         <p class="font-semibold text-green-600">Locked & Secure</p>
       </div>
     </div>
 
     <div class="flex flex-col sm:flex-row gap-3">
-      <button data-download-btn="{{ file.id }}" onclick="decryptAndDownload('{{ file.id }}')" class="font-mono font-bold text-xs tracking-wider uppercase no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-6 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer sm:w-auto w-full">Open & Unlock</button>
-      <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-6 py-3 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all text-center sm:w-auto w-full">Share</a>
+      <button data-download-btn="{{ file.id }}" onclick="decryptAndDownload('{{ file.id }}')" class="font-mono font-bold text-xs tracking-wider no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-6 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer sm:w-auto w-full">Open & Unlock</button>
+      <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs tracking-wider no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-6 py-3 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all text-center sm:w-auto w-full">Share</a>
     </div>
   </div>
 
@@ -49,17 +49,17 @@
         </div>
         {% if share.revoked %}
           <div class="flex items-center gap-1 flex-shrink-0">
-            <span class="text-xs font-mono font-bold uppercase text-red-500">Revoked</span>
-            <button type="button" onclick="var b=this; BlindBitConfirm.show(function(){ blindBitReshare(b) }, 'Give access back to {{ share.recipient.username|escapejs }}? They will be able to unlock this file again.', { title: 'Re-give Access?', confirmLabel: 'Re-share' })" data-file-id="{{ file.id }}" data-recipient="{{ share.recipient.username }}" data-file-key="{{ file.wrapped_file_key }}" class="font-mono font-bold text-xs uppercase text-[#1B4DFF] bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-blue-700">Re-share</button>
+            <span class="text-xs font-mono font-bold text-red-500">Revoked</span>
+            <button type="button" onclick="var b=this; BlindBitConfirm.show(function(){ blindBitReshare(b) }, 'Give access back to {{ share.recipient.username|escapejs }}? They will be able to unlock this file again.', { title: 'Re-give Access?', confirmLabel: 'Re-share' })" data-file-id="{{ file.id }}" data-recipient="{{ share.recipient.username }}" data-file-key="{{ file.wrapped_file_key }}" class="font-mono font-bold text-xs text-[#1B4DFF] bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-blue-700">Re-share</button>
             <form method="post" action="{% url 'sharing:delete_share' share.id %}">
               {% csrf_token %}
-              <button type="submit" onclick="return BlindBitConfirm(this.form, 'Delete this share from your history? This cannot be undone.', { title: 'Delete Share?', confirmLabel: 'Delete' })" class="font-mono font-bold text-xs uppercase text-gray-400 bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-red-700">Delete</button>
+              <button type="submit" onclick="return BlindBitConfirm(this.form, 'Delete this share from your history? This cannot be undone.', { title: 'Delete Share?', confirmLabel: 'Delete' })" class="font-mono font-bold text-xs text-gray-400 bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-red-700">Delete</button>
             </form>
           </div>
         {% else %}
           <form method="post" action="{% url 'sharing:revoke_share' share.id %}">
             {% csrf_token %}
-            <button type="submit" onclick="return BlindBitConfirm(this.form, 'Are you sure you want to revoke this access for {{ share.recipient.username|escapejs }}? This will require re-encrypting the file.', { title: 'Revoke Access?', confirmLabel: 'Revoke' })" class="font-mono font-bold text-xs uppercase text-red-500 bg-transparent border-0 cursor-pointer px-3 py-1.5 hover:text-red-700">Revoke</button>
+            <button type="submit" onclick="return BlindBitConfirm(this.form, 'Are you sure you want to revoke this access for {{ share.recipient.username|escapejs }}? This will require re-encrypting the file.', { title: 'Revoke Access?', confirmLabel: 'Revoke' })" class="font-mono font-bold text-xs text-red-500 bg-transparent border-0 cursor-pointer px-3 py-1.5 hover:text-red-700">Revoke</button>
           </form>
         {% endif %}
       </div>
