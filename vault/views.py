@@ -171,8 +171,16 @@ def upload_file(request):
     if ciphertext.size > 104857600:
         return JsonResponse({'error': 'File exceeds 100MB limit'}, status=400)
 
+    folder = None
+    folder_id = request.POST.get('folder_id')
+    if folder_id:
+        folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
+        if folder.is_favorites:
+            return JsonResponse({'error': 'You cannot upload directly into Favorites — star a file instead'}, status=400)
+
     encrypted_file = EncryptedFile.objects.create(
         owner=request.user,
+        folder=folder,
         ciphertext=ciphertext.read(),
         wrapped_file_key=request.POST.get('wrapped_file_key', ''),
         encrypted_filename=request.POST.get('encrypted_filename', ''),
