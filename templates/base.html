@@ -516,10 +516,205 @@ async function decryptAndDownload(fileId) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    if (btn) { btn.textContent = 'Open'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Download'; btn.disabled = false; }
   } catch (err) {
     alert('Decryption failed: ' + err.message);
-    if (btn) { btn.textContent = 'Open'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Download'; btn.disabled = false; }
+  }
+}
+
+// ── In-browser preview (decrypts, then renders images/video/audio/PDF/text) ──
+var previewModal = document.getElementById('preview-modal');
+var previewName = document.getElementById('preview-name');
+var previewBody = document.getElementById('preview-body');
+var previewSize = document.getElementById('preview-size');
+var previewDownloadBtn = document.getElementById('preview-download');
+var previewObjectUrl = null;
+var previewFileName = 'file';
+
+function previewRenderer(mime) {
+  mime = (mime || '').toLowerCase();
+  if (mime.indexOf('image/') === 0) return 'image';
+  if (mime.indexOf('video/') === 0) return 'video';
+  if (mime.indexOf('audio/') === 0) return 'audio';
+  if (mime === 'application/pdf') return 'pdf';
+  if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'docx';
+  if (mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || mime === 'application/vnd.ms-excel' || mime === 'text/csv' || mime === 'application/csv' || mime === 'application/vnd.oasis.opendocument.spreadsheet') return 'xlsx';
+  if (mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') return 'pptx';
+  if (mime.indexOf('text/') === 0 || mime.indexOf('application/json') === 0 || mime.indexOf('application/xml') === 0 || mime.indexOf('application/javascript') === 0 || mime.indexOf('application/x-javascript') === 0 || mime.indexOf('application/x-sh') === 0) return 'text';
+  return 'unknown';
+}
+
+// Some uploads are stored with a generic mime type — fall back to the
+// file extension when the mime type alone doesn't identify a preview.
+function kindByExtension(name) {
+  var ext = (name || '').split('.').pop().toLowerCase();
+  if (ext === 'docx') return 'docx';
+  if (ext === 'xlsx' || ext === 'xls' || ext === 'csv' || ext === 'ods') return 'xlsx';
+  if (ext === 'pptx') return 'pptx';
+  if (ext === 'pdf') return 'pdf';
+  if (ext === 'txt' || ext === 'md' || ext === 'markdown' || ext === 'json' || ext === 'xml') return 'text';
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif'].indexOf(ext) !== -1) return 'image';
+  if (['mp4', 'webm', 'mov', 'mkv', 'ogv'].indexOf(ext) !== -1) return 'video';
+  if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].indexOf(ext) !== -1) return 'audio';
+  return 'unknown';
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function closePreview() {
+  previewModal.classList.add('hidden');
+  previewBody.innerHTML = '';
+  if (previewObjectUrl) {
+    URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = null;
+  }
+}
+
+document.getElementById('preview-close').addEventListener('click', closePreview);
+previewModal.addEventListener('click', function(e) {
+  if (e.target === previewModal || e.target.id === 'preview-backdrop') closePreview();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && !previewModal.classList.contains('hidden')) closePreview();
+});
+previewDownloadBtn.addEventListener('click', function() {
+  if (!previewObjectUrl) return;
+  var a = document.createElement('a');
+  a.href = previewObjectUrl;
+  a.download = previewFileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+});
+
+async function decryptAndPreview(fileId) {
+  try {
+    var resp = await fetch('/vault/api/files/' + fileId + '/download-data/');
+    if (!resp.ok) {
+      var err = await resp.json();
+      throw new Error(err.error || 'Failed to fetch file data');
+    }
+    var data = await resp.json();
+    var fileKey = await blindBitFileKey(data);
+
+    var ciphertext = U8(data.ciphertext);
+    var nonce = U8(data.nonce);
+    var mimeType = data.mime_type || 'application/octet-stream';
+
+    var originalName = await BlindBitCrypto.decryptFilename(fileKey, data.encrypted_filename);
+    if (!originalName) {
+      try {
+        originalName = new TextDecoder().decode(U8(data.encrypted_filename));
+      } catch (e) { originalName = null; }
+    }
+    if (!originalName) originalName = 'file';
+    var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce }, fileKey, ciphertext);
+    var blob = new Blob([decrypted], { type: mimeType });
+
+    closePreview();
+    previewName.textContent = originalName;
+    previewFileName = originalName;
+    previewSize.textContent = formatBytes(decrypted.byteLength);
+
+    var kind = previewRenderer(mimeType);
+    if (kind === 'unknown') kind = kindByExtension(originalName);
+    var url = URL.createObjectURL(blob);
+    previewObjectUrl = url;
+    var el;
+
+    if (kind === 'image') {
+      el = document.createElement('img');
+      el.src = url;
+      el.className = 'max-h-[65vh] max-w-full object-contain';
+    } else if (kind === 'video') {
+      el = document.createElement('video');
+      el.src = url;
+      el.controls = true;
+      el.autoplay = true;
+      el.className = 'max-h-[65vh] max-w-full';
+    } else if (kind === 'audio') {
+      el = document.createElement('audio');
+      el.src = url;
+      el.controls = true;
+      el.autoplay = true;
+      el.className = 'w-full max-w-md';
+    } else if (kind === 'pdf') {
+      el = document.createElement('iframe');
+      el.src = url;
+      el.className = 'w-full h-[65vh] bg-white border-0';
+    } else if (kind === 'text') {
+      el = document.createElement('pre');
+      el.textContent = new TextDecoder().decode(decrypted);
+      el.className = 'text-white text-sm font-mono whitespace-pre-wrap break-words max-h-[65vh] overflow-auto w-full';
+    } else if (kind === 'docx') {
+      el = document.createElement('div');
+      el.className = 'w-full max-h-[65vh] overflow-auto bg-white p-6 text-[#0A0A0A] text-sm';
+      el.innerHTML = '<p class="text-gray-400">Converting document to HTML…</p>';
+      previewBody.appendChild(el);
+      if (!window.mammoth) {
+        el.innerHTML = '<p class="text-red-500">Document parser unavailable (CDN blocked?).</p>';
+      } else {
+        mammoth.convertToHtml({ arrayBuffer: decrypted })
+          .then(function(result) { el.innerHTML = result.value; })
+          .catch(function() { el.innerHTML = '<p class="text-red-500">Could not parse this Word document.</p>'; });
+      }
+      previewModal.classList.remove('hidden');
+      return;
+    } else if (kind === 'xlsx') {
+      el = document.createElement('div');
+      el.className = 'w-full max-h-[65vh] overflow-auto bg-white p-4 text-[#0A0A0A] text-xs';
+      el.innerHTML = '<p class="text-gray-400">Reading spreadsheet…</p>';
+      previewBody.appendChild(el);
+      if (!window.XLSX) {
+        el.innerHTML = '<p class="text-red-500">Spreadsheet parser unavailable (CDN blocked?).</p>';
+      } else {
+        try {
+          var wb = XLSX.read(decrypted, { type: 'array' });
+          var sheets = [];
+          wb.SheetNames.forEach(function(sn) {
+            sheets.push('<h3 class="font-bold text-sm mt-3 mb-1">' + sn + '</h3>' + XLSX.utils.sheet_to_html(wb.Sheets[sn]));
+          });
+          el.innerHTML = sheets.join('');
+        } catch (e3) {
+          el.innerHTML = '<p class="text-red-500">Could not parse this spreadsheet.</p>';
+        }
+      }
+      previewModal.classList.remove('hidden');
+      return;
+    } else if (kind === 'pptx') {
+      el = document.createElement('div');
+      el.className = 'w-full max-h-[65vh] overflow-auto bg-[#E8E8E2] p-6';
+      el.innerHTML = '<p class="text-gray-500 text-sm">Rendering slides…</p>';
+      previewBody.appendChild(el);
+      if (!window.pptxPreview || !window.JSZip) {
+        el.innerHTML = '<p class="text-red-500">Presentation parser unavailable (CDN blocked?).</p>';
+      } else {
+        pptxPreview.parse(decrypted).then(function(html) {
+          el.innerHTML = html;
+        }).catch(function() {
+          el.innerHTML = '<p class="text-red-500">Could not read this presentation.</p>';
+        });
+      }
+      previewModal.classList.remove('hidden');
+      return;
+    } else {
+      previewBody.innerHTML = '<div class="text-center text-gray-400 p-8">' +
+        '<svg class="w-12 h-12 mx-auto stroke-gray-400 stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>' +
+        '<p class="mt-4 text-sm">This file type cannot be previewed in the browser.</p>' +
+        '<p class="text-xs text-gray-500 mt-1">Supported previews: images, video, audio, PDF, text, Word (.docx), Excel (.xlsx / .xls / .csv) and PowerPoint (.pptx).</p>' +
+        '<p class="text-xs text-gray-500 mt-1">Use the Download button below.</p></div>';
+      previewModal.classList.remove('hidden');
+      return;
+    }
+    previewBody.appendChild(el);
+    previewModal.classList.remove('hidden');
+  } catch (err) {
+    alert('Preview failed: ' + err.message);
   }
 }
 
