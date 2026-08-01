@@ -128,7 +128,7 @@
   <h3>Uploading a File</h3>
   <ol>
     <li>Click <strong>Upload</strong> in the sidebar</li>
-    <li>Drag and drop a file, or click to browse (max 100MB)</li>
+    <li>Drag and drop files, or click to browse (up to 500MB per file — larger files are split into encrypted chunks)</li>
     <li>Click <strong>Lock & Upload</strong></li>
     <li>The file is encrypted with AES-256-GCM in your browser, then sent to the server</li>
     <li>You're redirected back to your vault when complete</li>
@@ -290,7 +290,7 @@
   <p>In development, OTP emails are printed to the terminal where you ran <code>python manage.py runserver</code>. Check that terminal output.</p>
 
   <h3>File Upload Gets Stuck</h3>
-  <p>Large files (near 100MB) take time to encrypt in the browser. Wait for the progress bar to complete. If it truly hangs, refresh and try a smaller file.</p>
+  <p>Large files (over ~200MB) take time to encrypt in the browser. Wait for the progress bar to complete; files are encrypted chunk by chunk so the browser stays responsive. If it truly hangs, refresh and try again — already-uploaded chunks are reused.</p>
 
   <h3>Passphrase Login Loops or Returns to Login</h3>
   <p>Try clearing your site data and cookies for BlindBit, then sign in fresh. This resolves most session conflicts.</p>
@@ -356,7 +356,7 @@
       <span class="faq-icon" aria-hidden="true">+</span>
     </button>
     <div class="faq-answer"><div class="faq-answer-inner">
-      <p>Yes — 100MB per file in Phase 1. This is due to browser memory constraints for client-side encryption of large files.</p>
+      <p>Up to 500MB per file. Large files are encrypted and uploaded in 8MB chunks, so files that used to hit browser memory limits now upload reliably. The practical ceiling is your browser's memory when decrypting during preview/download.</p>
     </div></div>
   </div>
 

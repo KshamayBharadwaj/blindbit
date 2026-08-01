@@ -1,12 +1,15 @@
 import json
 import base64
+import secrets
+from datetime import timedelta
 from django.shortcuts import render, get_object_or_404, redirect
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
-from .models import EncryptedFile, VaultFolder
+from django.db.models import F
+from .models import EncryptedFile, VaultFolder, UploadSession, FileChunk
 from sharing.models import FileShare
 
 @login_required
@@ -51,6 +54,7 @@ def dashboard(request, folder_id=None):
         'current_folder': current_folder,
         'recent_items': recent_items,
         'favorites_count': EncryptedFile.objects.filter(owner=request.user, is_favorite=True).count(),
+        'max_upload_size_mb': getattr(settings, 'MAX_UPLOAD_SIZE_MB', 500),
     })
 
 @login_required
@@ -64,6 +68,7 @@ def upload_view(request):
     return render(request, 'vault/upload.html', {
         'current_folder': current_folder,
         'folders': VaultFolder.objects.filter(owner=request.user),
+        'max_upload_size_mb': getattr(settings, 'MAX_UPLOAD_SIZE_MB', 500),
     })
 
 @login_required
@@ -167,12 +172,15 @@ def bulk_delete(request):
 @login_required
 @require_POST
 def upload_file(request):
+    """Legacy single-request upload, kept for backward compatibility. The
+    dashboard and upload pages use the chunked flow (start/upload/complete)."""
     ciphertext = request.FILES.get('ciphertext')
     if not ciphertext:
         return JsonResponse({'error': 'No ciphertext provided'}, status=400)
 
-    if ciphertext.size > 104857600:
-        return JsonResponse({'error': 'File exceeds 100MB limit'}, status=400)
+    max_bytes = getattr(settings, 'MAX_UPLOAD_SIZE_MB', 500) * 1048576
+    if ciphertext.size > max_bytes:
+        return JsonResponse({'error': f'File exceeds {max_bytes // 1048576}MB limit'}, status=400)
 
     folder = None
     folder_id = request.POST.get('folder_id')
@@ -197,6 +205,132 @@ def upload_file(request):
         'status': 'ok',
         'file_id': str(encrypted_file.id),
     })
+
+@login_required
+@require_POST
+def start_upload(request):
+    """Begin a chunked upload session. Returns a secret token used as the
+    credential for all subsequent chunk requests."""
+    data = json.loads(request.body)
+    original_size = int(data.get('original_size') or 0)
+    max_bytes = getattr(settings, 'MAX_UPLOAD_SIZE_MB', 500) * 1048576
+    if original_size <= 0 or original_size > max_bytes:
+        return JsonResponse({'error': f'File size must be between 1 byte and {max_bytes // 1048576}MB'}, status=400)
+
+    folder = None
+    folder_id = data.get('folder_id')
+    if folder_id:
+        folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
+        if folder.is_favorites:
+            return JsonResponse({'error': 'You cannot upload directly into Favorites — star a file instead'}, status=400)
+
+    total_chunks = max(1, int(data.get('total_chunks') or 1))
+    chunk_size = int(data.get('chunk_size') or 8388608)
+    ttl_hours = getattr(settings, 'UPLOAD_SESSION_TTL_HOURS', 24)
+    session = UploadSession.objects.create(
+        owner=request.user,
+        folder=folder,
+        token=secrets.token_urlsafe(32),
+        encrypted_filename=data.get('encrypted_filename', ''),
+        wrapped_file_key=data.get('wrapped_file_key', ''),
+        nonce=data.get('nonce', ''),
+        mime_type=data.get('mime_type', 'application/octet-stream'),
+        original_size=original_size,
+        chunk_size=chunk_size,
+        total_chunks=total_chunks,
+        expires_at=timezone.now() + timedelta(hours=ttl_hours),
+    )
+    return JsonResponse({'status': 'ok', 'token': session.token})
+
+def _get_live_session(request, token):
+    session = UploadSession.objects.filter(token=token, owner=request.user).first()
+    if not session or (session.expires_at and session.expires_at < timezone.now()):
+        return None
+    return session
+
+@login_required
+@require_POST
+def upload_chunk(request):
+    """Store one encrypted chunk of a session. Re-uploading the same index
+    overwrites it, so failed chunks can be retried idempotently."""
+    token = request.POST.get('token', '')
+    session = _get_live_session(request, token)
+    if not session:
+        return JsonResponse({'error': 'Upload session not found or expired'}, status=404)
+
+    try:
+        index = int(request.POST.get('index'))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Invalid chunk index'}, status=400)
+    if index < 0 or index >= session.total_chunks:
+        return JsonResponse({'error': 'Invalid chunk index'}, status=400)
+
+    ciphertext = request.FILES.get('ciphertext')
+    if not ciphertext:
+        return JsonResponse({'error': 'No ciphertext provided'}, status=400)
+
+    chunk_max = session.chunk_size + 16
+    if ciphertext.size > chunk_max:
+        return JsonResponse({'error': 'Chunk exceeds the session chunk size'}, status=400)
+
+    _, created = FileChunk.objects.update_or_create(
+        session=session,
+        index=index,
+        defaults={
+            'ciphertext': ciphertext.read(),
+            'nonce': request.POST.get('nonce', ''),
+            'auth_tag': request.POST.get('auth_tag', ''),
+        },
+    )
+    if created:
+        UploadSession.objects.filter(id=session.id).update(chunks_received=F('chunks_received') + 1)
+    return JsonResponse({'status': 'ok'})
+
+@login_required
+@require_POST
+def complete_upload(request):
+    """Assemble all chunks into an EncryptedFile row. The final ciphertext is
+    the concatenation of the per-chunk ciphertexts; auth_tag carries the JSON
+    segment map (iv/tag/size) that the client uses to decrypt chunk by chunk."""
+    data = json.loads(request.body)
+    token = data.get('token', '')
+    session = _get_live_session(request, token)
+    if not session:
+        return JsonResponse({'error': 'Upload session not found or expired'}, status=404)
+
+    chunks = list(session.chunks.order_by('index'))
+    if len(chunks) != session.total_chunks:
+        present = {c.index for c in chunks}
+        missing = [i for i in range(session.total_chunks) if i not in present]
+        return JsonResponse({'error': 'Missing chunks', 'missing': missing}, status=409)
+
+    ciphertext = b''.join(c.ciphertext for c in chunks)
+    if len(ciphertext) != session.original_size:
+        return JsonResponse({'error': 'Chunk byte count does not match the declared file size'}, status=400)
+
+    segments = [{'iv': c.nonce, 'tag': c.auth_tag, 'size': len(c.ciphertext)} for c in chunks]
+    encrypted_file = EncryptedFile.objects.create(
+        owner=session.owner,
+        folder=session.folder,
+        ciphertext=ciphertext,
+        wrapped_file_key=session.wrapped_file_key,
+        encrypted_filename=session.encrypted_filename,
+        encrypted_metadata='',
+        nonce=session.nonce,
+        auth_tag=json.dumps({'segments': segments}),
+        original_size=session.original_size,
+        mime_type=session.mime_type,
+    )
+    session.delete()
+    return JsonResponse({'status': 'ok', 'file_id': str(encrypted_file.id)})
+
+@login_required
+@require_POST
+def cancel_upload(request):
+    """Abandon a session and drop its chunks."""
+    data = json.loads(request.body)
+    UploadSession.objects.filter(token=data.get('token', ''), owner=request.user).delete()
+    return JsonResponse({'status': 'ok'})
 
 def _get_accessible_file(request, file_id):
     file = EncryptedFile.objects.filter(id=file_id, owner=request.user).first()

@@ -95,9 +95,13 @@ AUTH_USER_MODEL = 'accounts.User'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@blindbit.local'
 
-# Max upload size: 100MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600
-FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600
+# Max upload size: 500MB (chunked client-side encryption supports larger files)
+MAX_UPLOAD_SIZE_MB = int(os.environ.get('BLINDBIT_MAX_UPLOAD_MB', '500'))
+UPLOAD_SESSION_TTL_HOURS = int(os.environ.get('BLINDBIT_UPLOAD_TTL_HOURS', '24'))
+CHUNK_SIZE = 8 * 1024 * 1024
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760
 
 # WebAuthn
 WEBAUTHN_RP_ID = os.environ.get('BLINDBIT_RP_ID', 'localhost')

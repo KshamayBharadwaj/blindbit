@@ -456,6 +456,45 @@ function U8(b64) {
   return new Uint8Array(atob(b64).split('').map(function(c) { return c.charCodeAt(0); }));
 }
 
+function toB64(u8) {
+  var s = '';
+  for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+  return btoa(s);
+}
+
+// Decrypt a file payload returned by download-data. Legacy files are one
+// AES-GCM message (nonce + full ciphertext including its tag). Chunked
+// uploads store a JSON segment map in auth_tag; each segment is decrypted
+// with its own IV/tag and the plaintexts are concatenated.
+async function blindBitDecryptData(fileKey, data) {
+  var ciphertext = U8(data.ciphertext);
+  var segments = null;
+  if (data.auth_tag && data.auth_tag.charAt(0) === '{') {
+    try { segments = JSON.parse(data.auth_tag).segments; } catch (e) { segments = null; }
+  }
+  if (segments && segments.length) {
+    var parts = [];
+    var offset = 0;
+    var total = 0;
+    for (var i = 0; i < segments.length; i++) {
+      var seg = segments[i];
+      var ct = ciphertext.subarray(offset, offset + seg.size);
+      offset += seg.size;
+      var tagged = new Uint8Array(ct.length + 16);
+      tagged.set(ct, 0);
+      tagged.set(U8(seg.tag), ct.length);
+      var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: U8(seg.iv) }, fileKey, tagged);
+      parts.push(new Uint8Array(pt));
+      total += pt.byteLength;
+    }
+    var out = new Uint8Array(total);
+    var pos = 0;
+    for (var j = 0; j < parts.length; j++) { out.set(parts[j], pos); pos += parts[j].length; }
+    return out.buffer;
+  }
+  return await crypto.subtle.decrypt({ name: 'AES-GCM', iv: U8(data.nonce) }, fileKey, ciphertext);
+}
+
 // Resolve the per-file decryption key for either access path:
 // 'shared' unseals our X25519 private key, runs ECDH with the sender's
 // ephemeral key and unwraps the per-share file key; 'owner' accepts a
@@ -498,8 +537,6 @@ async function decryptAndDownload(fileId) {
     var data = await resp.json();
     var fileKey = await blindBitFileKey(data);
 
-    var ciphertext = U8(data.ciphertext);
-    var nonce = U8(data.nonce);
     var mimeType = data.mime_type || 'application/octet-stream';
 
     var originalName = await BlindBitCrypto.decryptFilename(fileKey, data.encrypted_filename);
@@ -508,7 +545,7 @@ async function decryptAndDownload(fileId) {
         originalName = new TextDecoder().decode(U8(data.encrypted_filename));
       } catch (e) { originalName = null; }
     }
-    var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce }, fileKey, ciphertext);
+    var decrypted = await blindBitDecryptData(fileKey, data);
 
     var blob = new Blob([decrypted], { type: mimeType });
     var url = URL.createObjectURL(blob);
@@ -606,8 +643,6 @@ async function decryptAndPreview(fileId) {
     var data = await resp.json();
     var fileKey = await blindBitFileKey(data);
 
-    var ciphertext = U8(data.ciphertext);
-    var nonce = U8(data.nonce);
     var mimeType = data.mime_type || 'application/octet-stream';
 
     var originalName = await BlindBitCrypto.decryptFilename(fileKey, data.encrypted_filename);
@@ -617,7 +652,7 @@ async function decryptAndPreview(fileId) {
       } catch (e) { originalName = null; }
     }
     if (!originalName) originalName = 'file';
-    var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce }, fileKey, ciphertext);
+    var decrypted = await blindBitDecryptData(fileKey, data);
     var blob = new Blob([decrypted], { type: mimeType });
 
     closePreview();

@@ -1,7 +1,7 @@
 from unfold.admin import ModelAdmin
 from unfold.decorators import display, action
 from django.contrib import admin
-from .models import EncryptedFile
+from .models import EncryptedFile, UploadSession, FileChunk
 
 
 @admin.register(EncryptedFile)
@@ -80,3 +80,38 @@ class EncryptedFileAdmin(ModelAdmin):
             if 'purge_files' in actions:
                 del actions['purge_files']
         return actions
+
+
+@admin.register(UploadSession)
+class UploadSessionAdmin(ModelAdmin):
+    list_display = ['display_short_id', 'display_owner', 'original_size', 'chunks_received', 'total_chunks', 'created_at', 'expires_at']
+    list_filter = ['created_at', 'expires_at']
+    search_fields = ['owner__username', 'owner__email']
+    readonly_fields = ['token', 'encrypted_filename', 'wrapped_file_key', 'nonce',
+                       'mime_type', 'original_size', 'chunk_size', 'total_chunks',
+                       'chunks_received', 'created_at', 'expires_at']
+    ordering = ['-created_at']
+
+    @display(description='ID', ordering='id')
+    def display_short_id(self, obj):
+        return str(obj.id)[:8]
+
+    @display(description='Owner', ordering='owner__username')
+    def display_owner(self, obj):
+        return obj.owner.username
+
+
+@admin.register(FileChunk)
+class FileChunkAdmin(ModelAdmin):
+    list_display = ['display_short_id', 'session', 'index', 'display_size']
+    list_filter = ['session']
+    ordering = ['session', 'index']
+    readonly_fields = ['session', 'index', 'ciphertext', 'nonce', 'auth_tag']
+
+    @display(description='ID', ordering='id')
+    def display_short_id(self, obj):
+        return str(obj.id)[:8]
+
+    @display(description='Bytes')
+    def display_size(self, obj):
+        return f'{len(obj.ciphertext)} B'

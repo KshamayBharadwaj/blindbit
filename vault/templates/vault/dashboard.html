@@ -387,22 +387,12 @@
         <div class="w-14 h-14 mx-auto mb-3 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
           <svg class="w-7 h-7 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </div>
-        <p class="font-semibold" id="drop-text">Drop a file here or click to browse</p>
-        <p class="text-xs text-gray-400 mt-1">Max 100MB · Locked before upload</p>
-        <input type="file" id="file-input" class="hidden" />
+        <p class="font-semibold" id="drop-text">Drop files here or click to browse</p>
+        <p class="text-xs text-gray-400 mt-1">Up to {{ max_upload_size_mb }}MB per file · Locked before upload</p>
+        <input type="file" id="file-input" class="hidden" multiple />
       </div>
 
-      <div id="file-info" class="hidden mb-4">
-        <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3 min-w-0">
-              <svg class="w-5 h-5 flex-shrink-0 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-              <span class="font-semibold truncate" id="file-name"></span>
-            </div>
-            <span class="text-sm text-gray-500 flex-shrink-0 ml-3" id="file-size"></span>
-          </div>
-        </div>
-      </div>
+      <div id="file-queue" class="hidden mb-4 space-y-2 max-h-56 overflow-y-auto"></div>
 
       <div id="progress-section" class="hidden mb-4">
         <div class="flex justify-between text-sm mb-1">
@@ -1096,14 +1086,12 @@ if (bulkMoveBtn) bulkMoveBtn.addEventListener('click', function(e) {
   });
 })();
 
-// ── Upload modal (drag & drop or browse) ──
+// ── Upload modal (multi-file, chunked) ──
 var uploadModal = document.getElementById('upload-modal');
 var uploadModalClose = document.getElementById('upload-modal-close');
 var dropZone = document.getElementById('drop-zone');
 var fileInput = document.getElementById('file-input');
-var fileInfo = document.getElementById('file-info');
-var fileName = document.getElementById('file-name');
-var fileSize = document.getElementById('file-size');
+var fileQueueEl = document.getElementById('file-queue');
 var uploadBtn = document.getElementById('upload-btn');
 var uploadForm = document.getElementById('upload-form');
 var uploadFolder = document.getElementById('upload-folder');
@@ -1113,7 +1101,10 @@ var progressPercent = document.getElementById('progress-percent');
 var progressLabel = document.getElementById('progress-label');
 var errorMsg = document.getElementById('error-msg');
 var uploadDefaultFolderId = {% if current_folder %}'{{ current_folder.id }}'{% else %}''{% endif %};
-var selectedUploadFile = null;
+var uploadBusy = false;
+var uploadQueue = [];
+var UPLOAD_CHUNK_SIZE = 8388608;
+var UPLOAD_MAX_BYTES = {{ max_upload_size_mb }} * 1048576;
 
 function buildUploadFolderOptions(selectedId) {
   var html = '<option value="">My Files</option>';
@@ -1125,16 +1116,17 @@ function buildUploadFolderOptions(selectedId) {
 }
 
 function resetUploadModal() {
-  selectedUploadFile = null;
+  uploadQueue = [];
   fileInput.value = '';
-  fileInfo.classList.add('hidden');
+  fileQueueEl.innerHTML = '';
+  fileQueueEl.classList.add('hidden');
   progressSection.classList.add('hidden');
   errorMsg.classList.add('hidden');
   errorMsg.textContent = '';
-  dropZone.querySelector('p.font-semibold').textContent = 'Drop a file here or click to browse';
+  dropZone.querySelector('p.font-semibold').textContent = 'Drop files here or click to browse';
   uploadBtn.disabled = true;
   uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-gray-300 text-gray-500 border-[2.5px] border-gray-300 py-3 cursor-not-allowed transition-all flex items-center justify-center gap-2';
-  uploadBtn.innerHTML = 'Select a file to upload';
+  uploadBtn.innerHTML = 'Select files to upload';
   progressBar.style.width = '0%';
   progressPercent.textContent = '0%';
 }
@@ -1146,6 +1138,7 @@ function openUploadModal() {
 }
 
 function closeUploadModal() {
+  if (uploadBusy) return;
   uploadModal.classList.add('hidden');
 }
 
@@ -1154,22 +1147,23 @@ uploadModal.addEventListener('click', function(e) {
   if (e.target === uploadModal) closeUploadModal();
 });
 
-dropZone.addEventListener('click', function() { fileInput.click(); });
+dropZone.addEventListener('click', function() { if (!uploadBusy) fileInput.click(); });
 dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragover'); });
 dropZone.addEventListener('drop', function(e) {
   e.preventDefault();
   dropZone.classList.remove('dragover');
-  if (e.dataTransfer.files.length) handleUploadFile(e.dataTransfer.files[0]);
+  if (!uploadBusy && e.dataTransfer.files.length) handleUploadFiles(e.dataTransfer.files);
 });
 fileInput.addEventListener('change', function() {
-  if (fileInput.files.length) handleUploadFile(fileInput.files[0]);
+  if (fileInput.files.length) handleUploadFiles(fileInput.files);
 });
 
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / 1048576).toFixed(1) + ' MB';
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1073741824).toFixed(2) + ' GB';
 }
 
 function showUploadError(msg) {
@@ -1177,20 +1171,46 @@ function showUploadError(msg) {
   errorMsg.classList.remove('hidden');
 }
 
-function handleUploadFile(file) {
-  if (file.size > 104857600) {
-    showUploadError('File exceeds 100MB limit.');
-    return;
+function handleUploadFiles(fileList) {
+  var list = Array.prototype.slice.call(fileList);
+  if (!list.length) return;
+  var rejected = [];
+  var accepted = [];
+  list.forEach(function(f) {
+    if (f.size <= 0) { rejected.push({ name: f.name, reason: 'Empty file' }); return; }
+    if (f.size > UPLOAD_MAX_BYTES) {
+      rejected.push({ name: f.name, reason: 'Exceeds ' + (UPLOAD_MAX_BYTES / 1048576) + 'MB limit' });
+      return;
+    }
+    accepted.push({ file: f, status: 'queued', error: null });
+  });
+  if (rejected.length) {
+    showUploadError(rejected.map(function(r) { return r.name + ': ' + r.reason; }).join(' · '));
   }
-  selectedUploadFile = file;
-  fileName.textContent = file.name;
-  fileSize.textContent = formatSize(file.size);
-  fileInfo.classList.remove('hidden');
-  errorMsg.classList.add('hidden');
-  uploadBtn.disabled = false;
-  uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2';
-  uploadBtn.innerHTML = '<svg class="w-4 h-4 stroke-[#0A0A0A] stroke-[2.5] fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Lock & Upload';
-  dropZone.querySelector('p.font-semibold').textContent = file.name;
+  uploadQueue = uploadQueue.concat(accepted);
+  if (uploadQueue.length) {
+    renderUploadQueue();
+    uploadBtn.disabled = false;
+    uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2';
+    uploadBtn.innerHTML = '<svg class="w-4 h-4 stroke-[#0A0A0A] stroke-[2.5] fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Lock & Upload ' + uploadQueue.length + ' file' + (uploadQueue.length === 1 ? '' : 's');
+  }
+}
+
+function renderUploadQueue() {
+  var pending = uploadQueue.filter(function(i) { return i.status === 'queued' || i.status === 'encrypting' || i.status === 'uploading'; });
+  fileQueueEl.classList.toggle('hidden', !pending.length);
+  if (!pending.length) { fileQueueEl.innerHTML = ''; return; }
+  var html = '';
+  pending.forEach(function(item) {
+    var badge = item.status === 'encrypting' ? '<span class="text-[#1B4DFF] font-mono text-[10px]">ENCRYPTING</span>'
+      : item.status === 'uploading' ? '<span class="text-[#CCFF00] font-mono text-[10px] bg-[#0A0A0A] px-1">UPLOADING</span>'
+      : '<span class="text-gray-400 font-mono text-[10px]">QUEUED</span>';
+    html += '<div class="flex items-center gap-3 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] px-3 py-2 min-w-0">'
+      + '<span class="font-semibold text-sm truncate flex-1">' + item.file.name + '</span>'
+      + '<span class="text-xs text-gray-500 flex-shrink-0">' + formatSize(item.file.size) + '</span>'
+      + badge + '</div>';
+  });
+  fileQueueEl.innerHTML = html;
 }
 
 function setUploadProgress(pct) {
@@ -1198,75 +1218,155 @@ function setUploadProgress(pct) {
   progressPercent.textContent = pct + '%';
 }
 
+function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+async function uploadChunkWithRetry(token, index, ciphertext, tag, iv) {
+  var lastErr = null;
+  for (var attempt = 0; attempt < 3; attempt++) {
+    try {
+      var fd = new FormData();
+      fd.append('token', token);
+      fd.append('index', index.toString());
+      fd.append('ciphertext', new Blob([ciphertext], { type: 'application/octet-stream' }), 'chunk.bin');
+      fd.append('nonce', toB64(iv));
+      fd.append('auth_tag', toB64(tag));
+      fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+      var resp = await fetch('{% url "vault:upload_chunk" %}', { method: 'POST', body: fd });
+      var data = await resp.json();
+      if (data.status === 'ok') return;
+      throw new Error(data.error || 'Chunk upload failed');
+    } catch (e) {
+      lastErr = e;
+      if (attempt < 2) await sleep(800 * (attempt + 1));
+    }
+  }
+  throw lastErr || new Error('Chunk upload failed');
+}
+
+function makeChunkIv(prefix, index) {
+  var iv = new Uint8Array(12);
+  iv.set(prefix, 0);
+  new DataView(iv.buffer).setUint32(8, index);
+  return iv;
+}
+
+async function encryptAndUploadFile(item, onProgress) {
+  var CHUNK = UPLOAD_CHUNK_SIZE;
+  var totalChunks = Math.max(1, Math.ceil(item.file.size / CHUNK));
+  var fileKey = await crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']
+  );
+  var wrappedFileKey;
+  if (window.BlindBitMasterKey) {
+    wrappedFileKey = await BlindBitCrypto.wrapKey(window.BlindBitMasterKey, fileKey);
+  } else {
+    var rawFileKey = await crypto.subtle.exportKey('raw', fileKey);
+    wrappedFileKey = toB64(new Uint8Array(rawFileKey));
+  }
+
+  item.status = 'encrypting';
+  renderUploadQueue();
+  var prefix = crypto.getRandomValues(new Uint8Array(8));
+  var startResp = await fetch('{% url "vault:upload_start" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+    body: JSON.stringify({
+      encrypted_filename: await BlindBitCrypto.encryptFilename(fileKey, item.file.name),
+      wrapped_file_key: wrappedFileKey,
+      nonce: toB64(prefix),
+      mime_type: item.file.type || 'application/octet-stream',
+      original_size: item.file.size,
+      chunk_size: CHUNK,
+      total_chunks: totalChunks,
+      folder_id: uploadFolder.value || undefined,
+    }),
+  });
+  var startData = await startResp.json();
+  if (startData.status !== 'ok') throw new Error(startData.error || 'Could not start upload');
+  var token = startData.token;
+
+  item.status = 'uploading';
+  renderUploadQueue();
+  var done = 0;
+  for (var i = 0; i < totalChunks; i++) {
+    var iv = makeChunkIv(prefix, i);
+    var startByte = i * CHUNK;
+    var endByte = Math.min(startByte + CHUNK, item.file.size);
+    var plaintext = await item.file.slice(startByte, endByte).arrayBuffer();
+    var encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, fileKey, plaintext);
+    var encArr = new Uint8Array(encrypted);
+    var ciphertext = encArr.subarray(0, encArr.length - 16);
+    var tag = encArr.subarray(encArr.length - 16);
+    await uploadChunkWithRetry(token, i, ciphertext, tag, iv);
+    done += endByte - startByte;
+    onProgress(done);
+  }
+
+  var completeResp = await fetch('{% url "vault:upload_complete" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+    body: JSON.stringify({ token: token }),
+  });
+  var completeData = await completeResp.json();
+  if (completeData.status !== 'ok') {
+    fetch('{% url "vault:upload_cancel" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ token: token }),
+    }).catch(function() {});
+    throw new Error(completeData.error || 'Could not finalize upload');
+  }
+  item.status = 'done';
+  renderUploadQueue();
+}
+
 uploadForm.addEventListener('submit', async function(e) {
   e.preventDefault();
-  if (!selectedUploadFile) return;
+  if (uploadBusy || !uploadQueue.length) return;
+  var items = uploadQueue.filter(function(i) { return i.status !== 'done'; });
+  if (!items.length) return;
 
+  uploadBusy = true;
   uploadBtn.disabled = true;
   uploadBtn.textContent = 'Processing...';
   progressSection.classList.remove('hidden');
-  progressLabel.textContent = 'Encrypting...';
-  setUploadProgress(10);
+  errorMsg.classList.add('hidden');
 
-  try {
-    var fileBuffer = await selectedUploadFile.arrayBuffer();
-    setUploadProgress(30);
+  var totalBytes = 0;
+  var completedBytes = 0;
+  items.forEach(function(i) { totalBytes += i.file.size; });
+  var doneItems = 0;
+  setUploadProgress(0);
 
-    var fileKey = await crypto.subtle.generateKey(
-      { name: 'AES-GCM', length: 256 },
-      true,
-      ['encrypt', 'decrypt']
-    );
-    setUploadProgress(40);
-
-    var iv = crypto.getRandomValues(new Uint8Array(12));
-    var encrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      fileKey,
-      fileBuffer
-    );
-    setUploadProgress(60);
-
-    var wrappedFileKey;
-    if (window.BlindBitMasterKey) {
-      wrappedFileKey = await BlindBitCrypto.wrapKey(window.BlindBitMasterKey, fileKey);
-    } else {
-      var rawFileKey = await crypto.subtle.exportKey('raw', fileKey);
-      wrappedFileKey = btoa(String.fromCharCode.apply(null, new Uint8Array(rawFileKey)));
+  for (var idx = 0; idx < items.length; idx++) {
+    var item = items[idx];
+    progressLabel.textContent = 'Locking & uploading ' + (idx + 1) + ' of ' + items.length + ' (' + item.file.name + ')...';
+    try {
+      await encryptAndUploadFile(item, function(done) {
+        completedBytes += done;
+        setUploadProgress(Math.min(99, Math.round(completedBytes / totalBytes * 100)));
+      });
+      doneItems++;
+    } catch (err) {
+      item.status = 'error';
+      item.error = err.message;
+      renderUploadQueue();
+      showUploadError(item.file.name + ': ' + err.message);
     }
+  }
 
-    var formData = new FormData();
-    formData.append('ciphertext', new Blob([encrypted], { type: 'application/octet-stream' }), 'file.enc');
-    formData.append('wrapped_file_key', wrappedFileKey);
-    formData.append('encrypted_filename', await BlindBitCrypto.encryptFilename(fileKey, selectedUploadFile.name));
-    formData.append('nonce', btoa(String.fromCharCode.apply(null, iv)));
-    formData.append('original_size', selectedUploadFile.size.toString());
-    formData.append('mime_type', selectedUploadFile.type || 'application/octet-stream');
-    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
-    if (uploadFolder.value) formData.append('folder_id', uploadFolder.value);
-
-    setUploadProgress(75);
-    progressLabel.textContent = 'Uploading to server...';
-
-    var resp = await fetch('{% url "vault:upload_api" %}', {
-      method: 'POST',
-      body: formData,
-    });
-    var data = await resp.json();
+  uploadBusy = false;
+  var failed = items.filter(function(i) { return i.status === 'error'; });
+  if (!failed.length) {
+    progressLabel.textContent = 'Upload complete!';
     setUploadProgress(100);
-
-    if (data.status === 'ok') {
-      progressLabel.textContent = 'Upload complete!';
-      uploadBtn.textContent = 'Upload Complete ✓';
-      setTimeout(function() { window.location.reload(); }, 800);
-    } else {
-      throw new Error(data.error || 'Upload failed');
-    }
-  } catch (err) {
-    showUploadError(err.message);
+    uploadBtn.innerHTML = 'Upload Complete ✓';
+    setTimeout(function() { window.location.reload(); }, 800);
+  } else {
+    progressLabel.textContent = doneItems + ' of ' + items.length + ' uploaded — fix the errors and click Upload to retry the rest.';
     uploadBtn.disabled = false;
-    uploadBtn.textContent = 'Retry Upload';
-    progressSection.classList.add('hidden');
+    uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2';
+    uploadBtn.innerHTML = 'Retry Upload';
   }
 });
 </script>

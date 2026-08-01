@@ -46,3 +46,39 @@ class EncryptedFile(models.Model):
 
     def __str__(self):
         return f"File {self.id} owned by {self.owner.username}"
+
+class UploadSession(models.Model):
+    """Pending chunked upload owned by a user, before it is assembled into an EncryptedFile."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='upload_sessions')
+    folder = models.ForeignKey(VaultFolder, null=True, blank=True, on_delete=models.SET_NULL, related_name='upload_sessions')
+    token = models.CharField(max_length=64, unique=True, db_index=True, help_text="Secret credential sent with every chunk request")
+    encrypted_filename = models.TextField()
+    wrapped_file_key = models.TextField()
+    nonce = models.TextField(help_text="8-byte random prefix shared by every chunk IV")
+    mime_type = models.CharField(max_length=255, default='application/octet-stream')
+    original_size = models.BigIntegerField(default=0)
+    chunk_size = models.IntegerField(default=8388608)
+    total_chunks = models.IntegerField(default=0)
+    chunks_received = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"UploadSession {self.id} ({self.chunks_received}/{self.total_chunks} chunks)"
+
+class FileChunk(models.Model):
+    """One encrypted chunk of a pending upload."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.ForeignKey(UploadSession, on_delete=models.CASCADE, related_name='chunks')
+    index = models.IntegerField()
+    ciphertext = models.BinaryField(help_text="AES-GCM ciphertext, 16-byte auth tag stripped")
+    nonce = models.TextField(help_text="Per-chunk 12-byte IV (8-byte prefix + chunk index)")
+    auth_tag = models.TextField(help_text="Per-chunk 16-byte AES-GCM auth tag")
+
+    class Meta:
+        unique_together = ['session', 'index']
+        ordering = ['index']
+
+    def __str__(self):
+        return f"Chunk {self.index} of {self.session_id}"
