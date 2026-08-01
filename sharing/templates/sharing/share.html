@@ -163,16 +163,20 @@ form.addEventListener('submit', async (e) => {
     // 4. wrappingKey = HKDF(sharedSecret)
     // 5. wrappedFileKey = AES-GCM-wrap(fileKey, wrappingKey)
     // Only the recipient's X25519 private key can recover the wrapping key.
-    if (!window.BlindBitMasterKey) {
-      throw new Error('Your master key is not available in this session. Log out and log in again.');
-    }
     const fileKeyB64 = '{{ file.wrapped_file_key }}';
     const fileKeyRaw = BlindBitCrypto.base64ToBuffer(fileKeyB64);
     let fileKey;
     if (fileKeyRaw.length === 32) {
       fileKey = await crypto.subtle.importKey('raw', fileKeyRaw, { name: 'AES-GCM' }, true, ['wrapKey']);
     } else {
-      fileKey = await BlindBitCrypto.unwrapKey(window.BlindBitMasterKey, fileKeyB64);
+      const mk = await blindBitEnsureMasterKey();
+      if (!mk) {
+        showError('Your master key is not available. Enter your passphrase to unlock your keys and try again.');
+        shareBtn.disabled = false;
+        shareBtn.textContent = 'Try Again';
+        return;
+      }
+      fileKey = await BlindBitCrypto.unwrapKey(mk, fileKeyB64);
     }
 
     const ephemeral = await BlindBitX25519.generateKeypair();
