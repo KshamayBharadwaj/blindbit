@@ -2,6 +2,11 @@ import uuid
 from django.db import models
 from django.conf import settings
 
+class ActiveManager(models.Manager):
+    """Default manager: excludes files sitting in the trash."""
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
 class VaultFolder(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='folders')
@@ -31,6 +36,10 @@ class EncryptedFile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     last_opened_at = models.DateTimeField(null=True, blank=True, help_text="Last time the file was opened/decrypted")
     is_favorite = models.BooleanField(default=False, help_text="Starred for quick access")
+    deleted_at = models.DateTimeField(null=True, blank=True, help_text="When the file was moved to Trash; NULL means active")
+
+    objects = ActiveManager()
+    all_objects = models.Manager()
 
     class Meta:
         ordering = ['-uploaded_at']

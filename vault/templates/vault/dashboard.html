@@ -313,16 +313,16 @@
 <!-- Delete confirmation modal -->
 <div id="delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
   <div class="bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] shadow-brutal p-8 max-w-md w-full">
-    <h2 class="text-xl font-bold mb-3">Delete file?</h2>
+    <h2 class="text-xl font-bold mb-3">Move to Trash?</h2>
     <p class="text-sm text-gray-600 mb-1">
-      You are about to permanently delete <span id="delete-file-name" class="font-semibold"></span>.
+      <span id="delete-file-name" class="font-semibold"></span> will be moved to the Trash.
     </p>
-    <p class="text-sm text-red-600 font-semibold mb-7">
-      This action is permanent. The encrypted file and all of its data will be removed from the vault immediately and cannot be recovered.
+    <p class="text-sm text-gray-500 mb-7">
+      You can restore it from the Trash until it is permanently deleted. Any shares of this file will be revoked.
     </p>
     <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
       <button type="button" id="delete-cancel" class="font-mono font-bold text-xs tracking-wider no-underline text-[#0A0A0A] bg-white border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Cancel</button>
-      <button type="button" id="delete-confirm" class="font-mono font-bold text-xs tracking-wider no-underline text-white bg-red-500 border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:bg-red-600 hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Delete Permanently</button>
+      <button type="button" id="delete-confirm" class="font-mono font-bold text-xs tracking-wider no-underline text-white bg-red-500 border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:bg-red-600 hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Move to Trash</button>
     </div>
   </div>
 </div>

@@ -1,6 +1,7 @@
 import json
 import base64
 from django.shortcuts import render, get_object_or_404, redirect
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponse
@@ -158,7 +159,9 @@ def bulk_delete(request):
         return JsonResponse({'error': 'No files selected'}, status=400)
     qs = EncryptedFile.objects.filter(owner=request.user, id__in=ids)
     count = qs.count()
-    qs.delete()
+    now = timezone.now()
+    qs.update(deleted_at=now)
+    FileShare.objects.filter(file_id__in=ids, owner=request.user).update(revoked=True)
     return JsonResponse({'status': 'ok', 'count': count})
 
 @login_required
@@ -199,7 +202,7 @@ def _get_accessible_file(request, file_id):
     file = EncryptedFile.objects.filter(id=file_id, owner=request.user).first()
     if file:
         return file
-    share = FileShare.objects.filter(file_id=file_id, recipient=request.user, revoked=False).first()
+    share = FileShare.objects.filter(file_id=file_id, recipient=request.user, revoked=False, file__deleted_at__isnull=True).first()
     return share.file if share else None
 
 @login_required
@@ -264,8 +267,41 @@ def file_detail(request, file_id):
 @require_POST
 def delete_file(request, file_id):
     encrypted_file = get_object_or_404(EncryptedFile, id=file_id, owner=request.user)
-    encrypted_file.delete()
+    EncryptedFile.all_objects.filter(id=encrypted_file.id).update(deleted_at=timezone.now())
+    FileShare.objects.filter(file=encrypted_file).update(revoked=True)
     return redirect('vault:dashboard')
+
+@login_required
+def trash_view(request):
+    trashed = EncryptedFile.all_objects.filter(owner=request.user, deleted_at__isnull=False).order_by('-deleted_at')
+    return render(request, 'vault/trash.html', {
+        'trashed_files': trashed,
+        'trash_count': trashed.count(),
+        'retention_days': getattr(settings, 'TRASH_RETENTION_DAYS', 30),
+    })
+
+@login_required
+@require_POST
+def restore_file(request, file_id):
+    file = get_object_or_404(EncryptedFile.all_objects, id=file_id, owner=request.user)
+    if file.deleted_at is None:
+        return redirect('vault:trash')
+    file.deleted_at = None
+    file.save(update_fields=['deleted_at'])
+    return redirect('vault:trash')
+
+@login_required
+@require_POST
+def purge_file(request, file_id):
+    file = get_object_or_404(EncryptedFile.all_objects, id=file_id, owner=request.user)
+    file.delete()
+    return redirect('vault:trash')
+
+@login_required
+@require_POST
+def empty_trash(request):
+    EncryptedFile.all_objects.filter(owner=request.user, deleted_at__isnull=False).delete()
+    return redirect('vault:trash')
 
 @login_required
 @require_POST
