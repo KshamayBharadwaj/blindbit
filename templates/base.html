@@ -297,10 +297,6 @@ function getCookie(name) {
 // owner's master key, re-wrap it for the recipient via fresh ECDH, and
 // re-activate the share server-side.
 async function blindBitReshare(btn) {
-  if (!window.BlindBitMasterKey) {
-    alert('Your master key is not available in this session. Log out and log in again.');
-    return;
-  }
   if (btn) { btn.disabled = true; btn.textContent = 'Re-sharing...'; }
   try {
     var fileId = btn.dataset.fileId;
@@ -321,7 +317,9 @@ async function blindBitReshare(btn) {
     if (fileKeyRaw.length === 32) {
       fileKey = await crypto.subtle.importKey('raw', fileKeyRaw, { name: 'AES-GCM' }, true, ['wrapKey']);
     } else {
-      fileKey = await BlindBitCrypto.unwrapKey(window.BlindBitMasterKey, fileKeyB64);
+      var mk = await blindBitEnsureMasterKey();
+      if (!mk) { if (btn) { btn.disabled = false; btn.textContent = 'Re-share'; } return; }
+      fileKey = await BlindBitCrypto.unwrapKey(mk, fileKeyB64);
     }
 
     var ephemeral = await BlindBitX25519.generateKeypair();
