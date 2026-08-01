@@ -12,6 +12,12 @@
 
     <form id="upload-form">
       {% csrf_token %}
+      {% if current_folder %}
+      <input type="hidden" name="folder_id" value="{{ current_folder.id }}">
+      <p class="text-sm mb-4">
+        Uploading to <a href="{% url 'vault:folder_view' current_folder.id %}" class="no-underline text-[#1B4DFF] font-semibold">{{ current_folder.name }}</a>
+      </p>
+      {% endif %}
       <div class="file-drop border-[2.5px] border-dashed border-[#0A0A0A] p-10 text-center cursor-pointer mb-6" id="drop-zone">
         <div class="w-14 h-14 mx-auto mb-3 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
           <svg class="w-7 h-7 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -147,6 +153,8 @@ form.addEventListener('submit', async (e) => {
     formData.append('original_size', selectedFile.size.toString());
     formData.append('mime_type', selectedFile.type || 'application/octet-stream');
     formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    var folderIdInput = document.querySelector('[name=folder_id]');
+    if (folderIdInput) formData.append('folder_id', folderIdInput.value);
 
     setProgress(75);
     progressLabel.textContent = 'Uploading to server...';
@@ -161,7 +169,13 @@ form.addEventListener('submit', async (e) => {
     if (data.status === 'ok') {
       progressLabel.textContent = 'Upload complete!';
       uploadBtn.textContent = 'Upload Complete ✓';
-      setTimeout(() => { window.location.href = '{% url "vault:dashboard" %}'; }, 1000);
+      setTimeout(() => {
+        {% if current_folder %}
+        window.location.href = '{% url "vault:folder_view" current_folder.id %}';
+        {% else %}
+        window.location.href = '{% url "vault:dashboard" %}';
+        {% endif %}
+      }, 1000);
     } else {
       throw new Error(data.error || 'Upload failed');
     }
