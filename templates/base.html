@@ -492,33 +492,7 @@ async function decryptAndDownload(fileId) {
       throw new Error(err.error || 'Failed to fetch file data');
     }
     var data = await resp.json();
-    var fileKey;
-
-    if (data.access === 'shared') {
-      // Recipient path: recover own X25519 private key, compute the ECDH
-      // shared secret with the sender's ephemeral key, derive the same
-      // wrapping key the sender used, and unwrap the file key.
-      if (!window.BlindBitMasterKey) throw new Error('Master key required but not available');
-      var myKeysResp = await fetch('/accounts/api/my-keys/');
-      var myKeys = await myKeysResp.json();
-      if (!myKeys.encrypted_x25519_private_key) {
-        throw new Error('Your encryption keys are not set up. Re-register your account to generate them.');
-      }
-      var privKeyBytes = await BlindBitCrypto.decryptFromB64(window.BlindBitMasterKey, myKeys.encrypted_x25519_private_key);
-      var privKeyHex = BlindBitX25519.bytesToHex(privKeyBytes);
-      var sharedSecret = await BlindBitX25519.ecdh(privKeyHex, data.ephemeral_public_key);
-      var wrappingKey = await BlindBitX25519.deriveWrappingKey(sharedSecret, data.ephemeral_public_key);
-      fileKey = await BlindBitCrypto.unwrapKey(wrappingKey, data.wrapped_file_key);
-    } else {
-      var fileKeyB64 = data.wrapped_file_key;
-      var fileKeyRaw = U8(fileKeyB64);
-      if (fileKeyRaw.length === 32) {
-        fileKey = await crypto.subtle.importKey('raw', fileKeyRaw, { name: 'AES-GCM' }, false, ['decrypt']);
-      } else {
-        if (!window.BlindBitMasterKey) throw new Error('Master key required but not available');
-        fileKey = await BlindBitCrypto.unwrapKey(window.BlindBitMasterKey, fileKeyB64);
-      }
-    }
+    var fileKey = await blindBitFileKey(data);
 
     var ciphertext = U8(data.ciphertext);
     var nonce = U8(data.nonce);
