@@ -1,15 +1,43 @@
 {% extends "base.html" %}
-{% block title %}My Vault — BlindBit{% endblock %}
+{% load vault_extras %}
+{% block title %}{% if current_folder %}{{ current_folder.name }} — BlindBit{% else %}My Vault — BlindBit{% endif %}{% endblock %}
 {% block content_app %}
-<div class="p-6 sm:p-8 lg:p-10 max-w-5xl">
+<style>
+  .file-grid {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .file-grid.hidden { display: none; }
+  @media (min-width: 768px) {
+    .file-grid { grid-template-columns: 2.5rem minmax(0, 2fr) 1fr 0.8fr 2.75rem auto; padding-left: 1.5rem; padding-right: 1.5rem; }
+  }
+  @media (min-width: 1024px) {
+    .file-grid { grid-template-columns: 2.5rem minmax(0, 2fr) 0.7fr 1fr 0.8fr 2.75rem auto; }
+  }
+  .file-name-header { padding-left: 3rem; }
+</style>
+<div class="p-6 sm:p-8 lg:p-10">
+
+  <!-- Breadcrumb (inside a folder) -->
+  {% if current_folder %}
+  <nav class="mb-6 flex items-center gap-2 font-mono text-xs tracking-wider uppercase" aria-label="Breadcrumb">
+    <a href="{% url 'vault:dashboard' %}" class="no-underline text-[#1B4DFF] hover:underline">My Files</a>
+    <span class="text-gray-400">/</span>
+    <span class="font-bold text-[#0A0A0A] truncate">{{ current_folder.name }}</span>
+  </nav>
+  {% endif %}
 
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
     <div>
-      <h1 class="text-2xl font-bold">My Vault</h1>
+      <h1 class="text-2xl font-bold">{% if current_folder %}{{ current_folder.name }}{% else %}My Vault{% endif %}</h1>
       <p class="text-sm text-gray-500 mt-0.5">Your files are locked and only you can open them.</p>
     </div>
-    <a href="{% url 'vault:upload' %}" class="flex items-center justify-center gap-2 font-mono font-bold text-xs tracking-wider uppercase no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all sm:w-auto w-full">
+    <a href="{% url 'vault:upload' %}" onclick="openUploadModal(); return false;" class="flex items-center justify-center gap-2 font-mono font-bold text-xs tracking-wider uppercase no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all sm:w-auto w-full">
       <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Upload
     </a>
@@ -48,78 +76,209 @@
       </button>
     </div>
   </div>
-
-  <!-- Encryption keys callout (has a master key but no X25519 keypair yet) -->
   {% endif %}
 
-  <!-- Stats -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-    <div class="bg-white border-[2.5px] border-[#0A0A0A] p-5 shadow-brutal">
-      <div class="flex items-center gap-3 mb-1">
-        <svg class="w-5 h-5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-        <p class="text-xs font-mono font-bold uppercase text-gray-400">Your Files</p>
+  <!-- Folders -->
+  {% if not current_folder %}
+  <div class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-bold text-lg">Folders</h2>
+      <div class="flex items-center gap-3">
+        {% if folders %}
+        <div class="flex items-center border-[2.5px] border-[#0A0A0A] bg-white shadow-brutal">
+          <button type="button" id="view-grid-btn" class="view-toggle-btn active w-8 h-8 flex items-center justify-center cursor-pointer border-0 transition-colors" aria-label="Grid view">
+            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </button>
+          <button type="button" id="view-list-btn" class="view-toggle-btn w-8 h-8 flex items-center justify-center cursor-pointer border-0 transition-colors" aria-label="List view">
+            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+        </div>
+        {% endif %}
+        <button type="button" id="new-folder-btn" class="font-mono font-bold text-xs uppercase no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-3 py-1.5 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all cursor-pointer">New Folder</button>
       </div>
-      <p class="text-2xl font-bold" id="file-count">{{ files|length }}</p>
     </div>
-    <div class="bg-white border-[2.5px] border-[#0A0A0A] p-5 shadow-brutal">
-      <div class="flex items-center gap-3 mb-1">
-        <svg class="w-5 h-5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <p class="text-xs font-mono font-bold uppercase text-gray-400">Shared With You</p>
+    {% if folders %}
+    <div id="folders-grid-view" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      {% for folder in folders %}
+      <div class="relative bg-white border-[2.5px] border-[#0A0A0A] p-5 shadow-brutal flex flex-col items-center text-center hover:-translate-y-0.5 hover:shadow-brutal-lg transition-all">
+        {% if not folder.is_favorites %}
+        <button type="button" data-folder-menu-btn class="absolute top-2 right-2 flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#E8E8E2] cursor-pointer border-0 rounded" aria-label="Folder options" aria-haspopup="true">
+          <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>
+        </button>
+        <div class="folder-menu-dropdown hidden absolute top-10 right-2 z-[70] bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal min-w-[130px]">
+          <button type="button" data-folder-rename-url="{% url 'vault:rename_folder' folder.id %}" data-folder-name="{{ folder.name }}" onclick="openRenameFolderModal(this)" class="w-full text-left font-mono font-bold text-xs uppercase px-3 py-2 hover:bg-[#E8E8E2] cursor-pointer border-0 bg-transparent">Rename</button>
+          <button type="button" data-folder-name="{{ folder.name }}" data-folder-delete-url="{% url 'vault:delete_folder' folder.id %}" onclick="confirmFolderDelete(this)" class="w-full text-left font-mono font-bold text-xs uppercase px-3 py-2 text-red-500 hover:bg-red-50 cursor-pointer border-0 bg-transparent">Delete</button>
+        </div>
+        {% endif %}
+        <a href="{% url 'vault:folder_view' folder.id %}" class="no-underline flex flex-col items-center flex-1 w-full group">
+          <div class="w-14 h-14 sm:w-16 sm:h-16 mb-3 flex items-center justify-center">
+            {% if folder.is_favorites %}
+            <svg viewBox="0 0 24 24" class="w-full h-full">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            {% else %}
+            <svg viewBox="0 0 24 24" class="w-full h-full">
+              <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            {% endif %}
+          </div>
+          <p class="font-semibold truncate max-w-full group-hover:text-[#1B4DFF]">{{ folder.name }}</p>
+          <p class="text-xs text-gray-400 mt-0.5">{% if folder.is_favorites %}{{ favorites_count }} starred file{{ favorites_count|pluralize }}{% else %}{{ folder.files.count }} file{{ folder.files.count|pluralize }}{% endif %}</p>
+        </a>
       </div>
-      <p class="text-2xl font-bold">{{ shared_files|length }}</p>
+      {% endfor %}
     </div>
-    <div class="bg-white border-[2.5px] border-[#0A0A0A] p-5 shadow-brutal">
-      <div class="flex items-center gap-3 mb-1">
-        <svg class="w-5 h-5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <p class="text-xs font-mono font-bold uppercase text-gray-400">Status</p>
+
+    <div id="folders-list-view" class="hidden bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal divide-y-[2.5px] divide-[#0A0A0A]">
+      {% for folder in folders %}
+      <div class="relative flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F8F8F5] transition-colors">
+        <a href="{% url 'vault:folder_view' folder.id %}" class="no-underline flex items-center gap-3 flex-1 min-w-0 group">
+          <div class="w-9 h-9 flex-shrink-0 flex items-center justify-center">
+            {% if folder.is_favorites %}
+            <svg viewBox="0 0 24 24" class="w-full h-full">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            {% else %}
+            <svg viewBox="0 0 24 24" class="w-full h-full">
+              <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            {% endif %}
+          </div>
+          <div class="min-w-0">
+            <p class="font-semibold truncate group-hover:text-[#1B4DFF]">{{ folder.name }}</p>
+            <p class="text-xs text-gray-400">{% if folder.is_favorites %}{{ favorites_count }} starred file{{ favorites_count|pluralize }}{% else %}{{ folder.files.count }} file{{ folder.files.count|pluralize }}{% endif %}</p>
+          </div>
+        </a>
+        {% if not folder.is_favorites %}
+        <button type="button" data-folder-menu-btn class="flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#E8E8E2] cursor-pointer border-0 rounded flex-shrink-0" aria-label="Folder options" aria-haspopup="true">
+          <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>
+        </button>
+        <div class="folder-menu-dropdown hidden absolute right-0 top-9 z-[70] bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal min-w-[130px]">
+          <button type="button" data-folder-rename-url="{% url 'vault:rename_folder' folder.id %}" data-folder-name="{{ folder.name }}" onclick="openRenameFolderModal(this)" class="w-full text-left font-mono font-bold text-xs uppercase px-3 py-2 hover:bg-[#E8E8E2] cursor-pointer border-0 bg-transparent">Rename</button>
+          <button type="button" data-folder-name="{{ folder.name }}" data-folder-delete-url="{% url 'vault:delete_folder' folder.id %}" onclick="confirmFolderDelete(this)" class="w-full text-left font-mono font-bold text-xs uppercase px-3 py-2 text-red-500 hover:bg-red-50 cursor-pointer border-0 bg-transparent">Delete</button>
+        </div>
+        {% endif %}
       </div>
-      <p class="text-2xl font-bold text-green-600">Secure</p>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-400">No folders yet — create one to keep your files organised.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Recent -->
+  {% if not current_folder %}
+  {% if recent_items %}
+  <div class="mb-8">
+    <h2 class="font-bold text-lg mb-4">Recent</h2>
+    <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal divide-y-[2.5px] divide-[#0A0A0A]">
+      {% for item in recent_items %}
+      <div class="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F8F8F5] transition-colors cursor-pointer" data-row-open="{{ item.1.id }}">
+        {{ item.1.mime_type|file_icon }}
+        <div class="min-w-0 flex-1">
+          {% if item.2 %}
+          <p class="font-semibold truncate shared-filename" data-encrypted="{{ item.1.encrypted_filename }}" data-key="{{ item.2.wrapped_file_key }}" data-ephemeral="{{ item.2.ephemeral_public_key }}">Protected file</p>
+          <p class="text-xs text-gray-400">{% if item.1.last_opened_at %}Opened {{ item.1.last_opened_at|date:"M j, Y" }}{% else %}Shared {{ item.2.created_at|date:"M j, Y" }}{% endif %}</p>
+          {% else %}
+          <p class="font-semibold truncate encrypted-filename" data-encrypted="{{ item.1.encrypted_filename }}" data-key="{{ item.1.wrapped_file_key }}">Protected file</p>
+          <p class="text-xs text-gray-400">{% if item.1.last_opened_at %}Opened {{ item.1.last_opened_at|date:"M j, Y" }}{% else %}Created {{ item.1.uploaded_at|date:"M j, Y" }}{% endif %}</p>
+          {% endif %}
+        </div>
+        <div class="hidden md:block text-xs text-gray-400 flex-shrink-0 md:w-40 lg:w-48 truncate text-right">
+          {% if item.2 %}From <span class="text-[#1B4DFF]">{{ item.2.owner.username }}</span>{% else %}Me · {% if item.1.folder %}{{ item.1.folder.name }}{% else %}My Files{% endif %}{% endif %}
+        </div>
+        <button data-download-btn="{{ item.1.id }}" onclick="decryptAndDownload('{{ item.1.id }}')" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-3 py-1.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0">
+          <svg class="w-3.5 h-3.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Open
+        </button>
+      </div>
+      {% endfor %}
     </div>
   </div>
+  {% endif %}
+  {% endif %}
 
   <!-- My Files -->
   <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal">
-    <div class="border-b-[2.5px] border-[#0A0A0A] px-5 py-4 flex items-center justify-between">
+    <div class="border-b-[2.5px] border-[#0A0A0A] px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
       <h2 class="font-bold">My Files</h2>
       {% if files %}
       <span class="text-xs text-gray-400 font-mono">{{ files|length }} file{{ files|length|pluralize }}</span>
       {% endif %}
+      {% if files %}
+      <div class="hidden sm:flex-1"></div>
+      <div class="flex items-center gap-2">
+        <input type="search" id="file-search" placeholder="Search files…" class="w-full sm:w-56 h-10 bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-3 text-sm focus:outline-none focus:border-[#1B4DFF]">
+        <select id="file-filter" class="h-10 bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-2 text-sm font-mono focus:outline-none cursor-pointer">
+          <option value="all">All files</option>
+          <option value="starred">Starred</option>
+          <option value="root">My Files</option>
+        </select>
+      </div>
+      {% endif %}
     </div>
 
     {% if files %}
-    <div class="divide-y-[2.5px] divide-[#0A0A0A]">
+    <!-- Sortable column headers -->
+    <div id="file-header" class="file-grid hidden md:grid py-3 bg-[#FAFAF5] border-b-[2.5px] border-[#0A0A0A] font-mono font-bold text-[10px] tracking-wider uppercase text-gray-400">
+      <input type="checkbox" id="select-all" class="w-4 h-4 accent-[#1B4DFF] cursor-pointer" aria-label="Select all files">
+      <button type="button" data-sort-key="name" class="file-name-header flex items-center gap-1 text-left cursor-pointer border-0 bg-transparent font-mono font-bold text-[10px] tracking-wider uppercase text-gray-400 hover:text-[#0A0A0A]">Name<span class="sort-ind"></span></button>
+      <div class="hidden lg:block">Owner</div>
+      <button type="button" data-sort-key="location" class="hidden md:block text-left cursor-pointer border-0 bg-transparent font-mono font-bold text-[10px] tracking-wider uppercase text-gray-400 hover:text-[#0A0A0A]">Location<span class="sort-ind"></span></button>
+      <button type="button" data-sort-key="created" class="hidden md:block text-left cursor-pointer border-0 bg-transparent font-mono font-bold text-[10px] tracking-wider uppercase text-gray-400 hover:text-[#0A0A0A]">Created<span class="sort-ind"></span></button>
+      <div class="hidden md:flex justify-center"><svg class="w-3 h-3 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      <div></div>
+    </div>
+
+    <div id="file-list" class="divide-y-[2.5px] divide-[#0A0A0A]">
       {% for file in files %}
-      <div class="file-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors" data-file-id="{{ file.id }}" data-delete-url="{% url 'vault:delete' file.id %}">
-        <div class="flex items-center gap-3 min-w-0 flex-1">
-          <div class="w-9 h-9 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center flex-shrink-0">
-            <svg class="w-4.5 h-4.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-          </div>
+      <div class="file-row group relative file-grid py-4 hover:bg-[#F8F8F5] transition-colors cursor-pointer" data-file-id="{{ file.id }}" data-mime="{{ file.mime_type }}" data-location="{% if file.folder %}{{ file.folder.name|escapejs }}{% else %}My Files{% endif %}" data-created="{{ file.uploaded_at|date:'c' }}" data-starred="{% if file.is_favorite %}1{% else %}0{% endif %}" data-row-open="{{ file.id }}" data-delete-url="{% url 'vault:delete' file.id %}" data-move-url="{% url 'vault:move_file' file.id %}" data-folder-id="{% if file.folder %}{{ file.folder.id }}{% endif %}" data-in-folder="{% if file.folder %}1{% else %}0{% endif %}">
+        <input type="checkbox" data-select-check class="w-4 h-4 accent-[#1B4DFF] cursor-pointer" aria-label="Select file">
+        <div class="min-w-0 flex items-center gap-3">
+          {{ file.mime_type|file_icon }}
           <div class="min-w-0">
-            <p class="font-semibold truncate encrypted-filename" data-encrypted="{{ file.encrypted_filename }}" data-key="{{ file.wrapped_file_key }}">Protected file</p>
-            <p class="text-xs text-gray-400">
-              {{ file.original_size|filesizeformat }} · {{ file.uploaded_at|date:"M j, Y" }}
-            </p>
+            <p class="font-semibold truncate encrypted-filename group-hover:text-[#1B4DFF]" data-encrypted="{{ file.encrypted_filename }}" data-key="{{ file.wrapped_file_key }}">Protected file</p>
+            <p class="text-xs text-gray-400 md:hidden">{% if file.last_opened_at %}Opened {{ file.last_opened_at|date:"M j, Y" }}{% else %}Created {{ file.uploaded_at|date:"M j, Y" }}{% endif %} · {% if file.folder %}{{ file.folder.name }}{% else %}My Files{% endif %}</p>
           </div>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0 sm:ml-3 flex-wrap">
-          <button data-download-btn="{{ file.id }}" onclick="decryptAndDownload('{{ file.id }}')" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-3 py-1.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center gap-1.5 cursor-pointer">
-            <svg class="w-3.5 h-3.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Open
+        <div class="hidden lg:block text-xs text-gray-500 truncate">Me</div>
+        <div class="hidden md:block text-xs text-gray-500 truncate">{% if file.folder %}{{ file.folder.name }}{% else %}My Files{% endif %}</div>
+        <div class="hidden md:block text-xs text-gray-500 truncate">{{ file.uploaded_at|date:"M j, Y" }}</div>
+        <div class="hidden md:flex justify-center">
+          <button type="button" data-favorite-btn data-favorite-url="{% url 'vault:toggle_favorite' file.id %}" aria-label="Toggle favorite" class="star-btn {% if file.is_favorite %}active{% endif %} flex items-center justify-center w-9 h-9 bg-transparent hover:bg-[#E8E8E2] border-0 rounded cursor-pointer" {% if file.is_favorite %}title="Remove from favorites"{% else %}title="Add to favorites"{% endif %}>
+            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           </button>
-          <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs uppercase no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-3 py-1.5 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all">Share</a>
-          <button type="button" onclick="confirmDelete('{{ file.id }}')" class="font-mono font-bold text-xs uppercase text-red-500 bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-red-700">Delete</button>
+        </div>
+        <div class="flex items-center justify-end gap-2 flex-shrink-0">
+          <button type="button" data-favorite-btn data-favorite-url="{% url 'vault:toggle_favorite' file.id %}" aria-label="Toggle favorite" class="star-btn md:hidden {% if file.is_favorite %}active{% endif %} flex items-center justify-center w-9 h-9 bg-transparent hover:bg-[#E8E8E2] border-0 rounded cursor-pointer">
+            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </button>
+          <button data-download-btn="{{ file.id }}" onclick="decryptAndDownload('{{ file.id }}')" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-3.5 h-9 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <svg class="w-3.5 h-3.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </button>
+          <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs uppercase no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-3.5 h-9 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all hidden sm:inline-flex items-center justify-center">Share</a>
+          <button type="button" data-file-menu-btn class="flex items-center justify-center w-9 h-9 bg-transparent hover:bg-[#E8E8E2] cursor-pointer border-0 rounded" aria-label="File options" aria-haspopup="true">
+            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>
+          </button>
+          <div class="file-menu-dropdown hidden absolute right-2 top-10 z-[70] bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal min-w-[150px]">
+            <button type="button" data-move-open class="w-full text-left font-mono font-bold text-xs uppercase px-3 py-2 hover:bg-[#E8E8E2] cursor-pointer border-0 bg-transparent">Move to…</button>
+            <button type="button" onclick="confirmDelete('{{ file.id }}')" class="w-full text-left font-mono font-bold text-xs uppercase px-3 py-2 text-red-500 hover:bg-red-50 cursor-pointer border-0 bg-transparent border-t-[2.5px] border-[#0A0A0A]">Delete</button>
+          </div>
         </div>
       </div>
       {% endfor %}
     </div>
+    <div id="file-empty-filter" class="hidden p-10 text-center text-sm text-gray-400">No files match your search or filter.</div>
     {% else %}
     <div class="p-12 text-center">
       <div class="w-16 h-16 mx-auto mb-4 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
         <svg class="w-8 h-8 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
       </div>
-      <p class="text-gray-500 mb-1">Your vault is empty</p>
-      <p class="text-sm text-gray-400">Upload your first file to get started.</p>
-      <a href="{% url 'vault:upload' %}" class="inline-flex items-center gap-2 mt-5 font-mono font-bold text-xs tracking-wider uppercase no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Upload File</a>
+      <p class="text-gray-500 mb-1">{% if current_folder.is_favorites %}No favorites yet{% else %}{% if current_folder %}This folder is empty{% else %}Your vault is empty{% endif %}{% endif %}</p>
+      <p class="text-sm text-gray-400">{% if current_folder.is_favorites %}Tap the star on any file to pin it here.{% else %}Upload your first file to get started.{% endif %}</p>
+      <a href="{% url 'vault:upload' %}" onclick="openUploadModal(); return false;" class="inline-flex items-center gap-2 mt-5 font-mono font-bold text-xs tracking-wider uppercase no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Upload File</a>
     </div>
     {% endif %}
   </div>
@@ -130,17 +289,14 @@
     <h2 class="font-bold text-lg mb-4">Shared With You</h2>
     <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal divide-y-[2.5px] divide-[#0A0A0A]">
       {% for share in shared_files %}
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors">
-        <div class="flex items-center gap-3 min-w-0 flex-1">
-          <div class="w-9 h-9 bg-[#1B4DFF] border-[2.5px] border-[#0A0A0A] flex items-center justify-center flex-shrink-0">
-            <svg class="w-4.5 h-4.5 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          </div>
-          <div class="min-w-0">
-            <p class="font-semibold truncate shared-filename" data-encrypted="{{ share.file.encrypted_filename }}" data-key="{{ share.wrapped_file_key }}" data-ephemeral="{{ share.ephemeral_public_key }}">Protected file</p>
-            <p class="text-xs text-gray-400">From <span class="text-[#1B4DFF]">{{ share.owner.username }}</span> · {{ share.created_at|date:"M j, Y" }}</p>
-          </div>
+      <div class="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F8F8F5] transition-colors cursor-pointer" data-row-open="{{ share.file.id }}">
+        {{ share.file.mime_type|file_icon }}
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold truncate shared-filename" data-encrypted="{{ share.file.encrypted_filename }}" data-key="{{ share.wrapped_file_key }}" data-ephemeral="{{ share.ephemeral_public_key }}">Protected file</p>
+          <p class="text-xs text-gray-400">{% if share.file.last_opened_at %}Opened {{ share.file.last_opened_at|date:"M j, Y" }}{% else %}Shared {{ share.created_at|date:"M j, Y" }}{% endif %}</p>
         </div>
-        <button data-download-btn="{{ share.file.id }}" onclick="decryptAndDownload('{{ share.file.id }}')" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-3 py-1.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex-shrink-0 sm:ml-3 cursor-pointer self-start sm:self-auto">Open</button>
+        <div class="hidden md:block text-xs text-gray-400 flex-shrink-0 md:w-40 lg:w-48 truncate text-right">From <span class="text-[#1B4DFF]">{{ share.owner.username }}</span></div>
+        <button data-download-btn="{{ share.file.id }}" onclick="decryptAndDownload('{{ share.file.id }}')" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-3 py-1.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex-shrink-0 cursor-pointer">Download</button>
       </div>
       {% endfor %}
     </div>
@@ -163,6 +319,114 @@
       <button type="button" id="delete-confirm" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-white bg-red-500 border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:bg-red-600 hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Delete Permanently</button>
     </div>
   </div>
+</div>
+
+<!-- New folder modal -->
+<div id="new-folder-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] shadow-brutal p-8 max-w-md w-full">
+    <h2 class="text-xl font-bold mb-3">New Folder</h2>
+    <p class="text-sm text-gray-600 mb-5">Folders keep your encrypted files organised. The folder name is visible to you only.</p>
+    <label for="new-folder-name" class="block text-xs font-mono font-bold uppercase text-gray-500 mb-1.5">Folder name</label>
+    <input type="text" id="new-folder-name" maxlength="255" class="w-full bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-3 py-2.5 font-mono focus:outline-none" placeholder="e.g. Taxes 2026">
+    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 mt-6">
+      <button type="button" id="new-folder-cancel" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-[#0A0A0A] bg-white border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Cancel</button>
+      <button type="button" id="new-folder-create" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Create Folder</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename folder modal -->
+<div id="rename-folder-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] shadow-brutal p-8 max-w-md w-full">
+    <h2 class="text-xl font-bold mb-3">Rename Folder</h2>
+    <p class="text-sm text-gray-600 mb-5">The folder name is visible to you only.</p>
+    <label for="rename-folder-name" class="block text-xs font-mono font-bold uppercase text-gray-500 mb-1.5">Folder name</label>
+    <input type="text" id="rename-folder-name" maxlength="255" class="w-full bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-3 py-2.5 font-mono focus:outline-none">
+    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 mt-6">
+      <button type="button" id="rename-folder-cancel" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-[#0A0A0A] bg-white border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Cancel</button>
+      <button type="button" id="rename-folder-save" class="font-mono font-bold text-xs tracking-wider uppercase no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- Move to modal (centered folder picker) -->
+<div id="move-card" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+  <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal w-full max-w-sm">
+    <div class="px-5 py-3 border-b-[2.5px] border-[#0A0A0A] flex items-center justify-between bg-[#FAFAF5]">
+      <p class="font-mono font-bold text-xs tracking-wider uppercase">Move to</p>
+      <button type="button" id="move-card-close" class="flex items-center justify-center w-6 h-6 bg-transparent hover:bg-[#E8E8E2] border-0 cursor-pointer rounded" aria-label="Close">
+        <svg class="w-3.5 h-3.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <p id="move-card-file" class="text-xs text-gray-500 truncate px-5 pt-3"></p>
+    <div id="move-card-list" class="max-h-80 overflow-y-auto p-2.5"></div>
+  </div>
+</div>
+
+<!-- Upload modal -->
+<div id="upload-modal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+  <div class="bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] shadow-brutal w-full max-w-lg">
+    <div class="px-5 py-3 border-b-[2.5px] border-[#0A0A0A] flex items-center justify-between bg-[#FAFAF5]">
+      <p class="font-mono font-bold text-xs tracking-wider uppercase">Upload File</p>
+      <button type="button" id="upload-modal-close" class="flex items-center justify-center w-6 h-6 bg-transparent hover:bg-[#E8E8E2] border-0 cursor-pointer rounded" aria-label="Close">
+        <svg class="w-3.5 h-3.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form id="upload-form" class="p-5">
+      {% csrf_token %}
+      <label for="upload-folder" class="block text-xs font-mono font-bold uppercase text-gray-500 mb-1.5">Upload to</label>
+      <select id="upload-folder" class="w-full h-10 bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-2 text-sm font-mono focus:outline-none cursor-pointer mb-4"></select>
+
+      <div class="file-drop border-[2.5px] border-dashed border-[#0A0A0A] p-8 text-center cursor-pointer mb-4" id="drop-zone">
+        <div class="w-14 h-14 mx-auto mb-3 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
+          <svg class="w-7 h-7 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <p class="font-semibold" id="drop-text">Drop a file here or click to browse</p>
+        <p class="text-xs text-gray-400 mt-1">Max 100MB · Locked before upload</p>
+        <input type="file" id="file-input" class="hidden" />
+      </div>
+
+      <div id="file-info" class="hidden mb-4">
+        <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3 min-w-0">
+              <svg class="w-5 h-5 flex-shrink-0 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+              <span class="font-semibold truncate" id="file-name"></span>
+            </div>
+            <span class="text-sm text-gray-500 flex-shrink-0 ml-3" id="file-size"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="progress-section" class="hidden mb-4">
+        <div class="flex justify-between text-sm mb-1">
+          <span id="progress-label">Encrypting & uploading...</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="w-full h-[10px] bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A]">
+          <div id="progress-bar" class="h-full bg-[#CCFF00] progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <button type="submit" id="upload-btn" disabled
+        class="w-full font-mono font-bold text-xs tracking-wider uppercase bg-gray-300 text-gray-500 border-[2.5px] border-gray-300 py-3 cursor-not-allowed transition-all flex items-center justify-center gap-2">
+        Select a file to upload
+      </button>
+
+      <div id="error-msg" class="mt-3 text-red-600 text-sm hidden"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Bulk actions bar (multi-select) -->
+<div id="bulk-bar" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-2 sm:gap-3 bg-[#0A0A0A] text-white border-[2.5px] border-[#0A0A0A] shadow-brutal-lg px-4 py-3">
+  <p id="bulk-count" class="font-mono font-bold text-xs tracking-wider uppercase whitespace-nowrap"></p>
+  <button type="button" id="bulk-star" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-white border-[2.5px] border-white px-3 py-1.5 hover:bg-[#CCFF00] hover:border-[#CCFF00] transition-all cursor-pointer">Star</button>
+  <button type="button" id="bulk-move" class="font-mono font-bold text-xs uppercase no-underline text-[#0A0A0A] bg-white border-[2.5px] border-white px-3 py-1.5 hover:bg-[#CCFF00] hover:border-[#CCFF00] transition-all cursor-pointer">Move</button>
+  <button type="button" id="bulk-delete" class="font-mono font-bold text-xs uppercase no-underline text-red-500 bg-white border-[2.5px] border-white px-3 py-1.5 hover:bg-red-500 hover:text-white transition-all cursor-pointer">Delete</button>
+  <button type="button" id="bulk-close" class="flex items-center justify-center w-8 h-8 text-white bg-transparent hover:bg-white/10 border-0 cursor-pointer rounded" aria-label="Clear selection">
+    <svg class="w-4 h-4 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
 </div>
 
 <form id="delete-form" method="post" class="hidden">
@@ -196,7 +460,446 @@ deleteModal.addEventListener('click', function(e) {
   if (e.target === deleteModal) closeDeleteModal();
 });
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeDeleteModal();
+  if (e.key === 'Escape') {
+    closeDeleteModal();
+    if (renameFolderModal) closeRenameFolderModal();
+    closeMoveCard();
+    document.querySelectorAll('.folder-menu-dropdown, .file-menu-dropdown').forEach(function(d) { d.classList.add('hidden'); });
+  }
+});
+
+// ── Folders ──
+var newFolderModal = document.getElementById('new-folder-modal');
+var newFolderInput = document.getElementById('new-folder-name');
+var newFolderCreateBtn = document.getElementById('new-folder-create');
+var newFolderCancelBtn = document.getElementById('new-folder-cancel');
+
+function openNewFolderModal() {
+  newFolderInput.value = '';
+  newFolderModal.classList.remove('hidden');
+  newFolderInput.focus();
+}
+
+function closeNewFolderModal() {
+  newFolderModal.classList.add('hidden');
+}
+
+var newFolderBtn = document.getElementById('new-folder-btn');
+if (newFolderBtn) newFolderBtn.addEventListener('click', openNewFolderModal);
+newFolderCancelBtn.addEventListener('click', closeNewFolderModal);
+newFolderModal.addEventListener('click', function(e) {
+  if (e.target === newFolderModal) closeNewFolderModal();
+});
+
+newFolderCreateBtn.addEventListener('click', async function() {
+  var name = newFolderInput.value.trim();
+  if (!name) return;
+  newFolderCreateBtn.disabled = true;
+  newFolderCreateBtn.textContent = 'Creating...';
+  try {
+    var fd = new FormData();
+    fd.append('name', name);
+    fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    var resp = await fetch('{% url "vault:create_folder" %}', { method: 'POST', body: fd });
+    var data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.error || 'Could not create folder');
+    window.location.reload();
+  } catch (err) {
+    alert(err.message);
+    newFolderCreateBtn.disabled = false;
+    newFolderCreateBtn.textContent = 'Create Folder';
+  }
+});
+
+newFolderInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') newFolderCreateBtn.click();
+});
+
+// ── Folder view toggle (grid / list) ──
+var foldersGridView = document.getElementById('folders-grid-view');
+var foldersListView = document.getElementById('folders-list-view');
+var viewGridBtn = document.getElementById('view-grid-btn');
+var viewListBtn = document.getElementById('view-list-btn');
+
+function setFolderView(mode) {
+  if (!foldersGridView) return;
+  var isList = mode === 'list';
+  foldersGridView.classList.toggle('hidden', isList);
+  foldersListView.classList.toggle('hidden', !isList);
+  viewGridBtn.classList.toggle('active', !isList);
+  viewListBtn.classList.toggle('active', isList);
+  try { localStorage.setItem('blindbit_folder_view', mode); } catch (e) {}
+}
+
+if (viewGridBtn) viewGridBtn.addEventListener('click', function() { setFolderView('grid'); });
+if (viewListBtn) viewListBtn.addEventListener('click', function() { setFolderView('list'); });
+var savedFolderView = null;
+try { savedFolderView = localStorage.getItem('blindbit_folder_view'); } catch (e) {}
+setFolderView(savedFolderView === 'list' ? 'list' : 'grid');
+
+// ── Folder card menus (three-dot) ──
+var renameFolderModal = document.getElementById('rename-folder-modal');
+var renameFolderInput = document.getElementById('rename-folder-name');
+var renameFolderSaveBtn = document.getElementById('rename-folder-save');
+var renameFolderCancelBtn = document.getElementById('rename-folder-cancel');
+var renameFolderUrl = null;
+
+function openRenameFolderModal(btn) {
+  renameFolderUrl = btn.dataset.folderRenameUrl;
+  renameFolderInput.value = btn.dataset.folderName;
+  renameFolderModal.classList.remove('hidden');
+  renameFolderInput.focus();
+  renameFolderInput.select();
+}
+
+function closeRenameFolderModal() {
+  renameFolderModal.classList.add('hidden');
+}
+
+renameFolderCancelBtn.addEventListener('click', closeRenameFolderModal);
+renameFolderModal.addEventListener('click', function(e) {
+  if (e.target === renameFolderModal) closeRenameFolderModal();
+});
+
+renameFolderSaveBtn.addEventListener('click', async function() {
+  var name = renameFolderInput.value.trim();
+  if (!name || !renameFolderUrl) return;
+  renameFolderSaveBtn.disabled = true;
+  renameFolderSaveBtn.textContent = 'Saving...';
+  try {
+    var fd = new FormData();
+    fd.append('name', name);
+    fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    var resp = await fetch(renameFolderUrl, { method: 'POST', body: fd });
+    var data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.error || 'Could not rename folder');
+    window.location.reload();
+  } catch (err) {
+    alert(err.message);
+    renameFolderSaveBtn.disabled = false;
+    renameFolderSaveBtn.textContent = 'Rename';
+  }
+});
+
+renameFolderInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') renameFolderSaveBtn.click();
+  if (e.key === 'Escape') closeRenameFolderModal();
+});
+
+// Open/close the three-dot menus (folders + files); click anywhere else closes them
+document.addEventListener('click', function(e) {
+  var menuBtn = e.target.closest('[data-folder-menu-btn], [data-file-menu-btn]');
+  var dropdowns = document.querySelectorAll('.folder-menu-dropdown, .file-menu-dropdown');
+  var openOne = null;
+  dropdowns.forEach(function(d) {
+    if (!d.classList.contains('hidden')) openOne = d;
+  });
+  if (menuBtn) {
+    e.stopPropagation();
+    closeMoveCard();
+    var menu = menuBtn.parentElement.querySelector('.folder-menu-dropdown, .file-menu-dropdown');
+    if (openOne && openOne !== menu) openOne.classList.add('hidden');
+    menu.classList.toggle('hidden');
+    return;
+  }
+  dropdowns.forEach(function(d) { d.classList.add('hidden'); });
+  closeMoveCard();
+});
+
+function confirmFolderDelete(btn) {
+  var url = btn.dataset.folderDeleteUrl;
+  var name = btn.dataset.folderName;
+  BlindBitConfirm.show(function() {
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    fetch(url, { method: 'POST', body: fd })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.status === 'ok') window.location.reload();
+        else alert(d.error || 'Could not delete folder');
+      })
+      .catch(function() { alert('Could not delete folder'); });
+  }, 'Delete folder "' + name + '"? The files inside are kept — they will move back to My Files.', {
+    title: 'Delete folder?',
+    confirmLabel: 'Delete Folder'
+  });
+}
+
+// Move file via the overflow menu (or bulk move)
+document.addEventListener('click', function(e) {
+  var moveBtn = e.target.closest('[data-move-target]');
+  if (!moveBtn) return;
+  e.stopPropagation();
+  var fd = new FormData();
+  fd.append('folder_id', moveBtn.dataset.moveTarget);
+  fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+  var url = moveBtn.dataset.moveUrl;
+  if (bulkMoveActive) {
+    url = '{% url "vault:bulk_move" %}';
+    getSelectedRows().forEach(function(r) { fd.append('file_ids', r.dataset.fileId); });
+    bulkMoveActive = false;
+  }
+  fetch(url, { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.status === 'ok') window.location.reload();
+      else alert(d.error || 'Could not move file');
+    })
+    .catch(function() { alert('Could not move file'); });
+});
+
+// Favorite (star) toggle — optimistic, with a little pop animation
+document.querySelectorAll('[data-favorite-btn]').forEach(function(btn) {
+  btn.addEventListener('animationend', function() { btn.classList.remove('pop'); });
+  btn.addEventListener('click', async function() {
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    btn.classList.toggle('active');
+    btn.classList.remove('pop');
+    void btn.offsetWidth;
+    btn.classList.add('pop');
+    try {
+      var resp = await fetch(btn.dataset.favoriteUrl, { method: 'POST', body: fd });
+      var data = await resp.json();
+      if (data.status !== 'ok') btn.classList.toggle('active');
+    } catch (e) {
+      btn.classList.toggle('active');
+    }
+  });
+});
+
+// ── File list: search, filter, sort ──
+var fileList = document.getElementById('file-list');
+var fileSearch = document.getElementById('file-search');
+var fileFilter = document.getElementById('file-filter');
+var fileEmptyFilter = document.getElementById('file-empty-filter');
+var selectAllBox = document.getElementById('select-all');
+
+function applyFilters() {
+  if (!fileList) return;
+  var q = (fileSearch ? fileSearch.value : '').trim().toLowerCase();
+  var f = fileFilter ? fileFilter.value : 'all';
+  var visible = 0;
+  Array.prototype.forEach.call(fileList.querySelectorAll('.file-row'), function(r) {
+    var name = r.querySelector('.encrypted-filename').textContent.trim().toLowerCase();
+    var ok = !q || name.indexOf(q) !== -1;
+    if (ok && f !== 'all') {
+      if (f === 'starred') ok = r.dataset.starred === '1';
+      else if (f === 'root') ok = !r.dataset.folderId;
+    }
+    r.classList.toggle('hidden', !ok);
+    if (ok) visible++;
+  });
+  if (fileEmptyFilter) fileEmptyFilter.classList.toggle('hidden', visible !== 0);
+}
+
+var sortKey = 'name';
+var sortDir = 1;
+try {
+  var savedSort = localStorage.getItem('blindbit_file_sort');
+  if (savedSort) {
+    var sp = savedSort.split(':');
+    sortKey = sp[0] || 'name';
+    sortDir = sp[1] === 'desc' ? -1 : 1;
+  }
+} catch (e) {}
+
+function applySort() {
+  if (!fileList) return;
+  var rows = Array.prototype.slice.call(fileList.querySelectorAll('.file-row'));
+  rows.sort(function(a, b) {
+    var va, vb;
+    if (sortKey === 'name') {
+      va = (a.querySelector('.encrypted-filename').textContent || '').trim().toLowerCase();
+      vb = (b.querySelector('.encrypted-filename').textContent || '').trim().toLowerCase();
+    } else if (sortKey === 'location') {
+      va = (a.dataset.location || '').toLowerCase();
+      vb = (b.dataset.location || '').toLowerCase();
+    } else {
+      va = Date.parse(a.dataset.created) || 0;
+      vb = Date.parse(b.dataset.created) || 0;
+    }
+    var c = va < vb ? -1 : va > vb ? 1 : 0;
+    return c * sortDir;
+  });
+  rows.forEach(function(r) { fileList.appendChild(r); });
+  document.querySelectorAll('[data-sort-key]').forEach(function(btn) {
+    var ind = btn.querySelector('.sort-ind');
+    if (!ind) return;
+    ind.textContent = btn.dataset.sortKey === sortKey ? (sortDir === 1 ? ' ▲' : ' ▼') : '';
+  });
+}
+
+document.querySelectorAll('[data-sort-key]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var k = btn.dataset.sortKey;
+    if (sortKey === k) sortDir = -sortDir;
+    else { sortKey = k; sortDir = 1; }
+    try { localStorage.setItem('blindbit_file_sort', sortKey + ':' + (sortDir === 1 ? 'asc' : 'desc')); } catch (e) {}
+    applySort();
+  });
+});
+
+if (fileSearch) fileSearch.addEventListener('input', applyFilters);
+if (fileFilter) fileFilter.addEventListener('change', applyFilters);
+
+// ── Row click opens the preview (unless an interactive control was clicked) ──
+document.addEventListener('click', function(e) {
+  var row = e.target.closest('[data-row-open]');
+  if (!row) return;
+  if (e.target.closest('a, button, input, select, label')) return;
+  decryptAndPreview(row.dataset.rowOpen);
+});
+
+// ── Multi-select + bulk actions ──
+var bulkBar = document.getElementById('bulk-bar');
+var bulkCount = document.getElementById('bulk-count');
+var bulkStarBtn = document.getElementById('bulk-star');
+var bulkMoveBtn = document.getElementById('bulk-move');
+var bulkDeleteBtn = document.getElementById('bulk-delete');
+var bulkCloseBtn = document.getElementById('bulk-close');
+var bulkMoveActive = false;
+
+function getSelectedRows() {
+  if (!fileList) return [];
+  return Array.prototype.filter.call(fileList.querySelectorAll('.file-row'), function(r) {
+    var box = r.querySelector('[data-select-check]');
+    return box && box.checked;
+  });
+}
+
+function updateSelectionUI() {
+  if (!bulkBar) return;
+  var rows = getSelectedRows();
+  var n = rows.length;
+  bulkBar.classList.toggle('hidden', n === 0);
+  if (!n) {
+    if (selectAllBox) { selectAllBox.checked = false; selectAllBox.indeterminate = false; }
+    return;
+  }
+  bulkCount.textContent = n + ' selected';
+  bulkStarBtn.textContent = rows.every(function(r) { return r.dataset.starred === '1'; }) ? 'Unstar' : 'Star';
+  if (selectAllBox) {
+    var visible = fileList.querySelectorAll('.file-row:not(.hidden)').length;
+    selectAllBox.checked = visible > 0 && n === visible;
+    selectAllBox.indeterminate = n > 0 && n < visible;
+  }
+}
+
+document.addEventListener('change', function(e) {
+  if (e.target.closest('[data-select-check]')) { updateSelectionUI(); return; }
+  if (e.target === selectAllBox) {
+    var checked = selectAllBox.checked;
+    Array.prototype.forEach.call(fileList.querySelectorAll('.file-row:not(.hidden)'), function(r) {
+      r.querySelector('[data-select-check]').checked = checked;
+    });
+    updateSelectionUI();
+  }
+});
+
+if (bulkStarBtn) bulkStarBtn.addEventListener('click', async function() {
+  var rows = getSelectedRows();
+  if (!rows.length) return;
+  var value = rows.every(function(r) { return r.dataset.starred === '1'; }) ? '0' : '1';
+  var fd = new FormData();
+  rows.forEach(function(r) { fd.append('file_ids', r.dataset.fileId); });
+  fd.append('is_favorite', value);
+  fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+  try {
+    var resp = await fetch('{% url "vault:bulk_favorite" %}', { method: 'POST', body: fd });
+    var data = await resp.json();
+    if (data.status === 'ok') window.location.reload();
+    else alert(data.error || 'Could not update favorites');
+  } catch (e) { alert('Could not update favorites'); }
+});
+
+if (bulkDeleteBtn) bulkDeleteBtn.addEventListener('click', function() {
+  var rows = getSelectedRows();
+  if (!rows.length) return;
+  BlindBitConfirm.show(function() {
+    var fd = new FormData();
+    rows.forEach(function(r) { fd.append('file_ids', r.dataset.fileId); });
+    fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    fetch('{% url "vault:bulk_delete" %}', { method: 'POST', body: fd })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.status === 'ok') window.location.reload();
+        else alert(d.error || 'Could not delete files');
+      })
+      .catch(function() { alert('Could not delete files'); });
+  }, rows.length + ' files will be permanently deleted and cannot be recovered.', {
+    title: 'Delete ' + rows.length + ' files?',
+    confirmLabel: 'Delete'
+  });
+});
+
+if (bulkCloseBtn) bulkCloseBtn.addEventListener('click', function() {
+  getSelectedRows().forEach(function(r) { r.querySelector('[data-select-check]').checked = false; });
+  updateSelectionUI();
+});
+
+// ── Move to modal (centered folder picker) ──
+var moveCard = document.getElementById('move-card');
+var moveCardList = document.getElementById('move-card-list');
+var moveCardFile = document.getElementById('move-card-file');
+var moveCardCloseBtn = document.getElementById('move-card-close');
+var vaultFolders = [{% for folder in folders %}{% if not folder.is_favorites %}{% if not forloop.first %},{% endif %}{id:'{{ folder.id }}', name:'{{ folder.name|escapejs }}'}{% endif %}{% endfor %}];
+
+function closeMoveCard() {
+  moveCard.classList.add('hidden');
+}
+
+moveCardCloseBtn.addEventListener('click', closeMoveCard);
+moveCard.addEventListener('click', function(e) {
+  if (e.target === moveCard) closeMoveCard();
+});
+
+function buildMoveItems(currentFolderId, inFolder, moveUrl) {
+  var items = '';
+  if (inFolder) {
+    items += '<button type="button" data-move-target="" data-move-url="' + moveUrl + '" class="w-full flex items-center gap-2.5 text-left px-3 py-2.5 hover:bg-[#E8E8E2] cursor-pointer border-0 bg-transparent">' +
+      '<svg class="w-4 h-4 flex-shrink-0 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>' +
+      '<span class="truncate font-semibold text-sm">My Files (root)</span></button>';
+  }
+  var hasFolders = false;
+  vaultFolders.forEach(function(folder) {
+    if (String(folder.id) === String(currentFolderId)) return;
+    hasFolders = true;
+    items += '<button type="button" data-move-target="' + folder.id + '" data-move-url="' + moveUrl + '" class="w-full flex items-center gap-2.5 text-left px-3 py-2.5 hover:bg-[#E8E8E2] cursor-pointer border-0 bg-transparent">' +
+      '<svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2" stroke-linejoin="round"/></svg>' +
+      '<span class="truncate font-semibold text-sm">' + folder.name + '</span></button>';
+  });
+  if (!inFolder && !hasFolders) {
+    items = '<p class="text-sm text-gray-400 px-3 py-3">No folders yet — create one on your dashboard.</p>';
+  }
+  return items;
+}
+
+document.addEventListener('click', function(e) {
+  var openBtn = e.target.closest('[data-move-open]');
+  if (!openBtn) return;
+  e.stopPropagation();
+  var row = openBtn.closest('.file-row');
+  var nameEl = row ? row.querySelector('.encrypted-filename') : null;
+  var name = nameEl && nameEl.textContent.trim() ? nameEl.textContent : 'this file';
+  var inFolder = row ? row.dataset.inFolder === '1' : false;
+  var currentFolderId = row ? row.dataset.folderId : '';
+  var moveUrl = row ? row.dataset.moveUrl : '';
+
+  moveCardFile.textContent = 'Move "' + name + '" to:';
+  moveCardList.innerHTML = buildMoveItems(currentFolderId, inFolder, moveUrl);
+  moveCard.classList.remove('hidden');
+});
+
+if (bulkMoveBtn) bulkMoveBtn.addEventListener('click', function() {
+  var rows = getSelectedRows();
+  if (!rows.length) return;
+  bulkMoveActive = true;
+  var inFolder = {% if current_folder %}true{% else %}false{% endif %};
+  var currentFolderId = {% if current_folder %}'{{ current_folder.id }}'{% else %}''{% endif %};
+  moveCardFile.textContent = 'Move ' + rows.length + ' file' + (rows.length === 1 ? '' : 's') + ' to:';
+  moveCardList.innerHTML = buildMoveItems(currentFolderId, inFolder, '');
+  moveCard.classList.remove('hidden');
 });
 
 (function() {
@@ -264,6 +967,8 @@ document.addEventListener('keydown', function(e) {
         if (sname) s.textContent = sname;
       } catch (e) {}
     }
+    applySort();
+    applyFilters();
   })();
 })();
 
@@ -382,5 +1087,179 @@ document.addEventListener('keydown', function(e) {
     }
   });
 })();
+
+// ── Upload modal (drag & drop or browse) ──
+var uploadModal = document.getElementById('upload-modal');
+var uploadModalClose = document.getElementById('upload-modal-close');
+var dropZone = document.getElementById('drop-zone');
+var fileInput = document.getElementById('file-input');
+var fileInfo = document.getElementById('file-info');
+var fileName = document.getElementById('file-name');
+var fileSize = document.getElementById('file-size');
+var uploadBtn = document.getElementById('upload-btn');
+var uploadForm = document.getElementById('upload-form');
+var uploadFolder = document.getElementById('upload-folder');
+var progressSection = document.getElementById('progress-section');
+var progressBar = document.getElementById('progress-bar');
+var progressPercent = document.getElementById('progress-percent');
+var progressLabel = document.getElementById('progress-label');
+var errorMsg = document.getElementById('error-msg');
+var uploadDefaultFolderId = {% if current_folder %}'{{ current_folder.id }}'{% else %}''{% endif %};
+var selectedUploadFile = null;
+
+function buildUploadFolderOptions(selectedId) {
+  var html = '<option value="">My Files</option>';
+  vaultFolders.forEach(function(folder) {
+    var sel = String(folder.id) === String(selectedId) ? ' selected' : '';
+    html += '<option value="' + folder.id + '"' + sel + '>' + folder.name + '</option>';
+  });
+  uploadFolder.innerHTML = html;
+}
+
+function resetUploadModal() {
+  selectedUploadFile = null;
+  fileInput.value = '';
+  fileInfo.classList.add('hidden');
+  progressSection.classList.add('hidden');
+  errorMsg.classList.add('hidden');
+  errorMsg.textContent = '';
+  dropZone.querySelector('p.font-semibold').textContent = 'Drop a file here or click to browse';
+  uploadBtn.disabled = true;
+  uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider uppercase bg-gray-300 text-gray-500 border-[2.5px] border-gray-300 py-3 cursor-not-allowed transition-all flex items-center justify-center gap-2';
+  uploadBtn.innerHTML = 'Select a file to upload';
+  progressBar.style.width = '0%';
+  progressPercent.textContent = '0%';
+}
+
+function openUploadModal() {
+  resetUploadModal();
+  buildUploadFolderOptions(uploadDefaultFolderId);
+  uploadModal.classList.remove('hidden');
+}
+
+function closeUploadModal() {
+  uploadModal.classList.add('hidden');
+}
+
+uploadModalClose.addEventListener('click', closeUploadModal);
+uploadModal.addEventListener('click', function(e) {
+  if (e.target === uploadModal) closeUploadModal();
+});
+
+dropZone.addEventListener('click', function() { fileInput.click(); });
+dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragover'); });
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleUploadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', function() {
+  if (fileInput.files.length) handleUploadFile(fileInput.files[0]);
+});
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function showUploadError(msg) {
+  errorMsg.textContent = msg;
+  errorMsg.classList.remove('hidden');
+}
+
+function handleUploadFile(file) {
+  if (file.size > 104857600) {
+    showUploadError('File exceeds 100MB limit.');
+    return;
+  }
+  selectedUploadFile = file;
+  fileName.textContent = file.name;
+  fileSize.textContent = formatSize(file.size);
+  fileInfo.classList.remove('hidden');
+  errorMsg.classList.add('hidden');
+  uploadBtn.disabled = false;
+  uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider uppercase bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2';
+  uploadBtn.innerHTML = '<svg class="w-4 h-4 stroke-[#0A0A0A] stroke-[2.5] fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Lock & Upload';
+  dropZone.querySelector('p.font-semibold').textContent = file.name;
+}
+
+function setUploadProgress(pct) {
+  progressBar.style.width = pct + '%';
+  progressPercent.textContent = pct + '%';
+}
+
+uploadForm.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  if (!selectedUploadFile) return;
+
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = 'Processing...';
+  progressSection.classList.remove('hidden');
+  progressLabel.textContent = 'Encrypting...';
+  setUploadProgress(10);
+
+  try {
+    var fileBuffer = await selectedUploadFile.arrayBuffer();
+    setUploadProgress(30);
+
+    var fileKey = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+    setUploadProgress(40);
+
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var encrypted = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      fileKey,
+      fileBuffer
+    );
+    setUploadProgress(60);
+
+    var wrappedFileKey;
+    if (window.BlindBitMasterKey) {
+      wrappedFileKey = await BlindBitCrypto.wrapKey(window.BlindBitMasterKey, fileKey);
+    } else {
+      var rawFileKey = await crypto.subtle.exportKey('raw', fileKey);
+      wrappedFileKey = btoa(String.fromCharCode.apply(null, new Uint8Array(rawFileKey)));
+    }
+
+    var formData = new FormData();
+    formData.append('ciphertext', new Blob([encrypted], { type: 'application/octet-stream' }), 'file.enc');
+    formData.append('wrapped_file_key', wrappedFileKey);
+    formData.append('encrypted_filename', await BlindBitCrypto.encryptFilename(fileKey, selectedUploadFile.name));
+    formData.append('nonce', btoa(String.fromCharCode.apply(null, iv)));
+    formData.append('original_size', selectedUploadFile.size.toString());
+    formData.append('mime_type', selectedUploadFile.type || 'application/octet-stream');
+    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    if (uploadFolder.value) formData.append('folder_id', uploadFolder.value);
+
+    setUploadProgress(75);
+    progressLabel.textContent = 'Uploading to server...';
+
+    var resp = await fetch('{% url "vault:upload_api" %}', {
+      method: 'POST',
+      body: formData,
+    });
+    var data = await resp.json();
+    setUploadProgress(100);
+
+    if (data.status === 'ok') {
+      progressLabel.textContent = 'Upload complete!';
+      uploadBtn.textContent = 'Upload Complete ✓';
+      setTimeout(function() { window.location.reload(); }, 800);
+    } else {
+      throw new Error(data.error || 'Upload failed');
+    }
+  } catch (err) {
+    showUploadError(err.message);
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = 'Retry Upload';
+    progressSection.classList.add('hidden');
+  }
+});
 </script>
 {% endblock %}
