@@ -221,6 +221,7 @@ def download_file(request, file_id):
 def download_file_data(request, file_id):
     encrypted_file = EncryptedFile.objects.filter(id=file_id, owner=request.user).first()
     if encrypted_file:
+        EncryptedFile.objects.filter(id=encrypted_file.id).update(last_opened_at=timezone.now())
         return JsonResponse({
             'access': 'owner',
             'ciphertext': base64.b64encode(encrypted_file.ciphertext).decode('ascii'),
@@ -235,6 +236,8 @@ def download_file_data(request, file_id):
     share = FileShare.objects.filter(file_id=file_id, recipient=request.user, revoked=False).first()
     if not share:
         return JsonResponse({'error': 'File not found or access denied'}, status=404)
+
+    EncryptedFile.objects.filter(id=share.file_id).update(last_opened_at=timezone.now())
 
     return JsonResponse({
         'access': 'shared',
