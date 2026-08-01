@@ -178,9 +178,56 @@
     </div>
   </div>
 
+  <!-- Unlock modal -->
+  <div id="unlock-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-4">
+    <div id="unlock-backdrop" class="absolute inset-0 bg-blindbit-black/60"></div>
+    <div class="relative bg-white border-[2.5px] border-blindbit-black shadow-brutal-lg w-full max-w-sm p-6">
+      <div class="flex items-start gap-3 mb-5">
+        <div class="w-10 h-10 bg-[#E8E8E2] border-[2.5px] border-blindbit-black flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 stroke-blindbit-black stroke-2 fill-none" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div>
+          <h3 class="font-bold text-lg leading-tight">Unlock your keys</h3>
+          <p class="text-sm text-gray-500 mt-1">Enter your passphrase to unlock your encryption keys for this session.</p>
+        </div>
+      </div>
+      <form id="unlock-form" class="space-y-3" autocomplete="off">
+        <input type="password" id="unlock-passphrase" placeholder="Passphrase" autocomplete="current-password"
+          class="w-full px-3.5 py-3 bg-white border-[2.5px] border-blindbit-black text-sm outline-none focus:shadow-[3px_3px_0_#1B4DFF] focus:-translate-x-[1.5px] focus:-translate-y-[1.5px] transition-all" />
+        <p id="unlock-error" class="text-sm text-red-500 hidden"></p>
+        <div class="flex gap-3">
+          <button type="button" id="unlock-cancel" class="flex-1 font-mono font-bold text-xs tracking-wider uppercase bg-white text-blindbit-black border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:bg-[#E8E8E2] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Cancel</button>
+          <button type="submit" id="unlock-submit" class="flex-1 font-mono font-bold text-xs tracking-wider uppercase bg-blindbit-accent text-blindbit-black border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Unlock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- File preview modal -->
+  <div id="preview-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div id="preview-backdrop" class="absolute inset-0 bg-blindbit-black/60"></div>
+    <div class="relative bg-white border-[2.5px] border-blindbit-black shadow-brutal-lg w-full max-w-3xl flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between gap-3 px-5 py-3 border-b-[2.5px] border-blindbit-black">
+        <p id="preview-name" class="font-mono font-bold text-xs tracking-wider uppercase truncate"></p>
+        <button id="preview-close" type="button" class="flex items-center justify-center w-6 h-6 bg-transparent hover:bg-[#E8E8E2] border-0 cursor-pointer rounded flex-shrink-0" aria-label="Close preview">
+          <svg class="w-3.5 h-3.5 stroke-blindbit-black stroke-2 fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="preview-body" class="flex-1 overflow-auto bg-[#1E1E1E] flex items-center justify-center p-4 min-h-[200px]"></div>
+      <div class="flex items-center justify-between gap-3 px-5 py-3 border-t-[2.5px] border-blindbit-black">
+        <p id="preview-size" class="text-xs text-gray-500 font-mono"></p>
+        <button id="preview-download" type="button" class="font-mono font-bold text-xs tracking-wider uppercase bg-blindbit-accent text-blindbit-black border-[2.5px] border-blindbit-black px-4 py-2 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Download</button>
+      </div>
+    </div>
+  </div>
+
   {% block extra_scripts %}{% endblock %}
 
 <script src="{% static 'js/crypto.js' %}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="{% static 'js/pptx-preview.js' %}"></script>
 <script>
 function openSidebar() {
   document.getElementById('sidebar').classList.remove('-translate-x-full');
