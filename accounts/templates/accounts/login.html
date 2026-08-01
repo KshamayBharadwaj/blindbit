@@ -27,7 +27,6 @@
     border: 3px solid #0A0A0A;
     box-shadow: 6px 6px 0 #0A0A0A;
     transition: all 0.08s;
-    text-transform: uppercase;
     font-family: 'Space Mono', monospace;
     font-weight: 700;
     font-size: 0.75rem;
@@ -92,7 +91,6 @@
     font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.06em;
-    text-transform: uppercase;
     cursor: pointer;
     border: 3px solid #0A0A0A;
     transition: all 0.1s;
@@ -122,7 +120,7 @@
 
   <div class="w-full max-w-[440px] relative">
     <div class="flex items-center gap-2 mb-4">
-      <span class="brutal-tag">AUTH</span>
+      <span class="brutal-tag">Auth</span>
       <div class="h-[3px] flex-1 bg-[#0A0A0A]"></div>
     </div>
 
@@ -153,7 +151,7 @@
         <form id="login-form" class="space-y-5">
           {% csrf_token %}
           <div>
-            <label for="username-passkey" class="font-mono font-bold text-xs uppercase tracking-wider block mb-2">
+            <label for="username-passkey" class="font-mono font-bold text-xs tracking-wider block mb-2">
               Username <span class="text-red-500 ml-0.5">*</span>
             </label>
             <input type="text" id="username-passkey" name="username" required placeholder="alice"
@@ -171,14 +169,14 @@
       <div id="tab-content-passphrase" class="hidden">
         <div class="space-y-5">
           <div>
-            <label for="username-passphrase" class="font-mono font-bold text-xs uppercase tracking-wider block mb-2">
+            <label for="username-passphrase" class="font-mono font-bold text-xs tracking-wider block mb-2">
               Username <span class="text-red-500 ml-0.5">*</span>
             </label>
             <input type="text" id="username-passphrase" required placeholder="alice"
               class="brutal-input w-full px-4 py-3.5 font-mono text-sm" />
           </div>
           <div>
-            <label for="passphrase" class="font-mono font-bold text-xs uppercase tracking-wider block mb-2">
+            <label for="passphrase" class="font-mono font-bold text-xs tracking-wider block mb-2">
               Passphrase <span class="text-red-500 ml-0.5">*</span>
             </label>
             <div class="relative">
@@ -200,11 +198,11 @@
           <div id="otp-section" class="hidden">
             <div class="flex items-center gap-3 mb-4">
               <div class="h-[2px] flex-1 bg-[#0A0A0A] opacity-20"></div>
-              <span class="font-mono font-bold text-[0.6rem] uppercase tracking-[0.15em] text-gray-400">Check Your Email</span>
+              <span class="font-mono font-bold text-[0.6rem] tracking-[0.15em] text-gray-400">Check Your Email</span>
               <div class="h-[2px] flex-1 bg-[#0A0A0A] opacity-20"></div>
             </div>
             <div>
-              <label for="otp-input" class="font-mono font-bold text-xs uppercase tracking-wider block mb-2">
+              <label for="otp-input" class="font-mono font-bold text-xs tracking-wider block mb-2">
                 Verification Code <span class="text-red-500 ml-0.5">*</span>
               </label>
               <input type="text" id="otp-input" maxlength="6" inputmode="numeric" pattern="[0-9]*"
@@ -224,10 +222,10 @@
     </div>
 
     <div class="mt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
-      <a href="{% url 'accounts:register' %}" class="font-bold text-[#0A0A0A] underline underline-offset-4 decoration-2 hover:text-[#1B4DFF] transition-colors font-mono text-xs uppercase tracking-wider">
+      <a href="{% url 'accounts:register' %}" class="font-bold text-[#0A0A0A] underline underline-offset-4 decoration-2 hover:text-[#1B4DFF] transition-colors font-mono text-xs tracking-wider">
         Create Account →
       </a>
-      <a href="{% url 'accounts:recovery' %}" class="text-gray-500 underline underline-offset-4 hover:text-[#0A0A0A] transition-colors font-mono text-xs uppercase tracking-wider">
+      <a href="{% url 'accounts:recovery' %}" class="text-gray-500 underline underline-offset-4 hover:text-[#0A0A0A] transition-colors font-mono text-xs tracking-wider">
         Recover
       </a>
     </div>

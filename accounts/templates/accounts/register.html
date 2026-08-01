@@ -27,7 +27,6 @@
     border: 3px solid #0A0A0A;
     box-shadow: 6px 6px 0 #0A0A0A;
     transition: all 0.08s;
-    text-transform: uppercase;
     font-family: 'Space Mono', monospace;
     font-weight: 700;
     font-size: 0.75rem;
@@ -141,7 +140,7 @@
   <div class="w-full max-w-[520px] relative">
     <!-- Decorative header -->
     <div class="flex items-center gap-2 mb-4">
-      <span class="brutal-tag">REGISTER</span>
+      <span class="brutal-tag">Register</span>
       <div class="h-[3px] flex-1 bg-[#0A0A0A]"></div>
     </div>
 
@@ -166,14 +165,14 @@
         {% csrf_token %}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label for="username" class="font-mono font-bold text-xs uppercase tracking-wider block mb-2">
+            <label for="username" class="font-mono font-bold text-xs tracking-wider block mb-2">
               Username <span class="text-red-500">*</span>
             </label>
             <input type="text" id="username" name="username" required placeholder="alice"
               class="brutal-input w-full px-4 py-3 font-mono text-sm" />
           </div>
           <div>
-            <label for="email" class="font-mono font-bold text-xs uppercase tracking-wider block mb-2">
+            <label for="email" class="font-mono font-bold text-xs tracking-wider block mb-2">
               Email <span class="text-red-500">*</span>
             </label>
             <input type="email" id="email" name="email" required placeholder="alice@example.com"
@@ -182,7 +181,7 @@
         </div>
 
         <div>
-          <label class="font-mono font-bold text-xs uppercase tracking-wider block mb-2">Passkey</label>
+          <label class="font-mono font-bold text-xs tracking-wider block mb-2">Passkey</label>
           <p class="text-xs text-gray-400 mb-3 font-mono">Your browser will prompt you to create a passkey for authentication.</p>
           <button id="create-passkey-btn" type="button"
             class="brutal-btn brutal-btn-secondary w-full py-3.5 flex items-center justify-center gap-2">
@@ -194,11 +193,11 @@
         <div id="passphrase-section" class="hidden">
           <div class="flex items-center gap-3 mb-3">
             <div class="h-[2px] flex-1 bg-[#0A0A0A] opacity-20"></div>
-            <span class="font-mono font-bold text-[0.55rem] uppercase tracking-[0.15em] text-gray-400">Passphrase Fallback</span>
+            <span class="font-mono font-bold text-[0.55rem] tracking-[0.15em] text-gray-400">Passphrase Fallback</span>
             <div class="h-[2px] flex-1 bg-[#0A0A0A] opacity-20"></div>
           </div>
           <div>
-            <label for="passphrase" class="font-mono font-bold text-xs uppercase tracking-wider block mb-2">
+            <label for="passphrase" class="font-mono font-bold text-xs tracking-wider block mb-2">
               Passphrase <span class="text-red-500">*</span>
             </label>
             <div class="relative">
@@ -215,7 +214,7 @@
               <div class="h-1.5 bg-[#E8E8E2] border-2 border-[#0A0A0A]">
                 <div id="strength-bar" class="h-full w-0 transition-all duration-200"></div>
               </div>
-              <p id="strength-text" class="text-[0.6rem] font-mono mt-1 font-bold uppercase tracking-wider"></p>
+              <p id="strength-text" class="text-[0.6rem] font-mono mt-1 font-bold tracking-wider"></p>
             </div>
             <p class="text-xs text-gray-400 mt-1.5 font-mono">Used when your browser doesn't support the PRF extension.</p>
           </div>

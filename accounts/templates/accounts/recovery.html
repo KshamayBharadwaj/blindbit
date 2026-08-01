@@ -10,19 +10,19 @@
       <form id="recovery-form" class="space-y-5">
         {% csrf_token %}
         <div>
-          <label for="username" class="font-mono font-bold text-xs uppercase block mb-1.5">Username</label>
+          <label for="username" class="font-mono font-bold text-xs block mb-1.5">Username</label>
           <input type="text" id="username" name="username" required placeholder="alice"
             class="w-full px-3.5 py-3 bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] text-sm outline-none focus:shadow-[3px_3px_0_#1B4DFF] focus:-translate-x-[1.5px] focus:-translate-y-[1.5px] transition-all" />
         </div>
         <div>
-          <label for="recovery-code" class="font-mono font-bold text-xs uppercase block mb-1.5">Recovery Code</label>
+          <label for="recovery-code" class="font-mono font-bold text-xs block mb-1.5">Recovery Code</label>
           <input type="text" id="recovery-code" inputmode="text" autocomplete="off"
             placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
             class="w-full px-3.5 py-3 bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] text-sm outline-none focus:shadow-[3px_3px_0_#1B4DFF] focus:-translate-x-[1.5px] focus:-translate-y-[1.5px] transition-all font-mono tracking-widest" />
         </div>
 
         <button type="submit"
-          class="w-full font-mono font-bold text-xs tracking-wider uppercase bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2">
+          class="w-full font-mono font-bold text-xs tracking-wider bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2">
           Recover Account
         </button>
       </form>
