@@ -122,7 +122,7 @@
       <div class="border-t-2 border-blindbit-black p-3 shrink-0">
         <div class="flex items-center justify-between">
           <span class="text-sm font-medium truncate">{{ user.username }}</span>
-          <a href="{% url 'accounts:logout' %}" class="flex items-center gap-1.5 text-xs font-mono font-bold uppercase no-underline text-blindbit-black hover:text-red-500 transition-colors px-2 py-1">
+          <a href="{% url 'accounts:logout' %}" class="flex items-center gap-1.5 text-xs font-mono font-bold no-underline text-blindbit-black hover:text-red-500 transition-colors px-2 py-1">
             <svg class="w-3.5 h-3.5 stroke-current stroke-2 fill-none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             Leave
           </a>
@@ -146,10 +146,10 @@
     </a>
     <div class="flex items-center gap-4">
       {% if user.is_authenticated %}
-      <a href="{% url 'vault:dashboard' %}" class="font-mono font-bold text-xs tracking-wider uppercase no-underline bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-5 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Dashboard</a>
+      <a href="{% url 'vault:dashboard' %}" class="font-mono font-bold text-xs tracking-wider no-underline bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-5 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Dashboard</a>
       {% else %}
       <a href="{% url 'accounts:login' %}" class="text-sm font-medium no-underline text-blindbit-black px-3 py-2">Sign In</a>
-      <a href="{% url 'accounts:register' %}" class="font-mono font-bold text-xs tracking-wider uppercase no-underline bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-5 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Sign Up</a>
+      <a href="{% url 'accounts:register' %}" class="font-mono font-bold text-xs tracking-wider no-underline bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-5 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Sign Up</a>
       {% endif %}
     </div>
   </nav>
@@ -172,8 +172,8 @@
         </div>
       </div>
       <div class="flex gap-3">
-        <button id="confirm-cancel" type="button" class="flex-1 font-mono font-bold text-xs tracking-wider uppercase bg-white text-blindbit-black border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:bg-[#E8E8E2] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Cancel</button>
-        <button id="confirm-ok" type="button" class="flex-1 font-mono font-bold text-xs tracking-wider uppercase bg-red-500 text-white border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:bg-red-600 hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Confirm</button>
+        <button id="confirm-cancel" type="button" class="flex-1 font-mono font-bold text-xs tracking-wider bg-white text-blindbit-black border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:bg-[#E8E8E2] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Cancel</button>
+        <button id="confirm-ok" type="button" class="flex-1 font-mono font-bold text-xs tracking-wider bg-red-500 text-white border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:bg-red-600 hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Confirm</button>
       </div>
     </div>
   </div>
@@ -196,8 +196,8 @@
           class="w-full px-3.5 py-3 bg-white border-[2.5px] border-blindbit-black text-sm outline-none focus:shadow-[3px_3px_0_#1B4DFF] focus:-translate-x-[1.5px] focus:-translate-y-[1.5px] transition-all" />
         <p id="unlock-error" class="text-sm text-red-500 hidden"></p>
         <div class="flex gap-3">
-          <button type="button" id="unlock-cancel" class="flex-1 font-mono font-bold text-xs tracking-wider uppercase bg-white text-blindbit-black border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:bg-[#E8E8E2] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Cancel</button>
-          <button type="submit" id="unlock-submit" class="flex-1 font-mono font-bold text-xs tracking-wider uppercase bg-blindbit-accent text-blindbit-black border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Unlock</button>
+          <button type="button" id="unlock-cancel" class="flex-1 font-mono font-bold text-xs tracking-wider bg-white text-blindbit-black border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:bg-[#E8E8E2] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Cancel</button>
+          <button type="submit" id="unlock-submit" class="flex-1 font-mono font-bold text-xs tracking-wider bg-blindbit-accent text-blindbit-black border-[2.5px] border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Unlock</button>
         </div>
       </form>
     </div>
@@ -208,7 +208,7 @@
     <div id="preview-backdrop" class="absolute inset-0 bg-blindbit-black/60"></div>
     <div class="relative bg-white border-[2.5px] border-blindbit-black shadow-brutal-lg w-full max-w-3xl flex flex-col max-h-[90vh]">
       <div class="flex items-center justify-between gap-3 px-5 py-3 border-b-[2.5px] border-blindbit-black">
-        <p id="preview-name" class="font-mono font-bold text-xs tracking-wider uppercase truncate"></p>
+        <p id="preview-name" class="font-mono font-bold text-xs tracking-wider truncate"></p>
         <button id="preview-close" type="button" class="flex items-center justify-center w-6 h-6 bg-transparent hover:bg-[#E8E8E2] border-0 cursor-pointer rounded flex-shrink-0" aria-label="Close preview">
           <svg class="w-3.5 h-3.5 stroke-blindbit-black stroke-2 fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -216,7 +216,7 @@
       <div id="preview-body" class="flex-1 overflow-auto bg-[#1E1E1E] flex items-center justify-center p-4 min-h-[200px]"></div>
       <div class="flex items-center justify-between gap-3 px-5 py-3 border-t-[2.5px] border-blindbit-black">
         <p id="preview-size" class="text-xs text-gray-500 font-mono"></p>
-        <button id="preview-download" type="button" class="font-mono font-bold text-xs tracking-wider uppercase bg-blindbit-accent text-blindbit-black border-[2.5px] border-blindbit-black px-4 py-2 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Download</button>
+        <button id="preview-download" type="button" class="font-mono font-bold text-xs tracking-wider bg-blindbit-accent text-blindbit-black border-[2.5px] border-blindbit-black px-4 py-2 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Download</button>
       </div>
     </div>
   </div>
