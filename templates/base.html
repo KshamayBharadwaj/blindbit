@@ -102,11 +102,7 @@
       <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
         <a href="{% url 'vault:dashboard' %}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium no-underline text-blindbit-black rounded {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
           <svg class="w-4 h-4 stroke-blindbit-black stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="4"/><rect x="14" y="10" width="7" height="11"/><rect x="3" y="14" width="7" height="7"/></svg>
-          My Vault
-        </a>
-        <a href="{% url 'vault:upload' %}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium no-underline text-blindbit-black rounded {% if request.resolver_match.url_name == 'upload' %}active{% endif %}">
-          <svg class="w-4 h-4 stroke-blindbit-black stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Upload
+          Home
         </a>
         <a href="{% url 'sharing:shared' %}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium no-underline text-blindbit-black rounded {% if request.resolver_match.url_name == 'shared' %}active{% endif %}">
           <svg class="w-4 h-4 stroke-blindbit-black stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -116,7 +112,7 @@
           <svg class="w-4 h-4 stroke-blindbit-black stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="15" y2="22"/></svg>
           Devices
         </a>
-        <a href="/docs/" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium no-underline text-blindbit-black rounded">
+        <a href="/docs/" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium no-underline text-blindbit-black rounded {% if request.resolver_match.url_name == 'docs' %}active{% endif %}">
           <svg class="w-4 h-4 stroke-blindbit-black stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
           Help & Guide
         </a>
