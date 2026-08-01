@@ -7,7 +7,7 @@
     <p class="text-sm text-gray-500 mb-6">Grant someone access to this file. Only they will be able to unlock it.</p>
 
     <div class="bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] p-4 mb-6">
-      <p class="text-xs font-mono font-bold uppercase text-gray-500 mb-1">File</p>
+      <p class="text-xs font-mono font-bold text-gray-500 mb-1">File</p>
       <p class="font-mono text-sm encrypted-filename" data-encrypted="{{ file.encrypted_filename }}" data-key="{{ file.wrapped_file_key }}">Protected file</p>
       <p class="text-xs font-mono text-gray-400 mt-1">{{ file.id }}</p>
     </div>
@@ -17,7 +17,7 @@
       <input type="hidden" name="file_id" value="{{ file.id }}" />
 
       <div>
-        <label for="recipient" class="font-mono font-bold text-xs uppercase block mb-1.5">Recipient (username or email)</label>
+        <label for="recipient" class="font-mono font-bold text-xs block mb-1.5">Recipient (username or email)</label>
         <div class="relative">
           <input type="text" id="recipient" name="recipient" required placeholder="Search by username..."
             class="w-full px-3.5 py-3 bg-white border-[2.5px] border-[#0A0A0A] text-sm outline-none focus:shadow-[3px_3px_0_#1B4DFF] focus:-translate-x-[1.5px] focus:-translate-y-[1.5px] transition-all" autocomplete="off" />
@@ -33,7 +33,7 @@
       </div>
 
       <button type="submit" id="share-btn" disabled
-        class="w-full font-mono font-bold text-xs tracking-wider uppercase bg-gray-300 text-gray-500 border-[2.5px] border-gray-300 py-3.5 cursor-not-allowed transition-all flex items-center justify-center gap-2">
+        class="w-full font-mono font-bold text-xs tracking-wider bg-gray-300 text-gray-500 border-[2.5px] border-gray-300 py-3.5 cursor-not-allowed transition-all flex items-center justify-center gap-2">
         Select a recipient
       </button>
     </form>
@@ -59,17 +59,17 @@
         </div>
         {% if share.revoked %}
           <div class="flex items-center gap-1 flex-shrink-0">
-            <span class="text-xs font-mono font-bold uppercase text-red-500">Revoked</span>
-            <button type="button" onclick="var b=this; BlindBitConfirm.show(function(){ blindBitReshare(b) }, 'Give access back to {{ share.recipient.username|escapejs }}? They will be able to unlock this file again.', { title: 'Re-give Access?', confirmLabel: 'Re-share' })" data-file-id="{{ file.id }}" data-recipient="{{ share.recipient.username }}" data-file-key="{{ file.wrapped_file_key }}" class="font-mono font-bold text-xs uppercase text-[#1B4DFF] bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-blue-700">Re-share</button>
+            <span class="text-xs font-mono font-bold text-red-500">Revoked</span>
+            <button type="button" onclick="var b=this; BlindBitConfirm.show(function(){ blindBitReshare(b) }, 'Give access back to {{ share.recipient.username|escapejs }}? They will be able to unlock this file again.', { title: 'Re-give Access?', confirmLabel: 'Re-share' })" data-file-id="{{ file.id }}" data-recipient="{{ share.recipient.username }}" data-file-key="{{ file.wrapped_file_key }}" class="font-mono font-bold text-xs text-[#1B4DFF] bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-blue-700">Re-share</button>
             <form method="post" action="{% url 'sharing:delete_share' share.id %}">
               {% csrf_token %}
-              <button type="submit" onclick="return BlindBitConfirm(this.form, 'Delete this share from your history? This cannot be undone.', { title: 'Delete Share?', confirmLabel: 'Delete' })" class="font-mono font-bold text-xs uppercase text-gray-400 bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-red-700">Delete</button>
+              <button type="submit" onclick="return BlindBitConfirm(this.form, 'Delete this share from your history? This cannot be undone.', { title: 'Delete Share?', confirmLabel: 'Delete' })" class="font-mono font-bold text-xs text-gray-400 bg-transparent border-0 cursor-pointer px-2 py-1.5 hover:text-red-700">Delete</button>
             </form>
           </div>
         {% else %}
           <form method="post" action="{% url 'sharing:revoke_share' share.id %}">
             {% csrf_token %}
-            <button type="submit" onclick="return BlindBitConfirm(this.form, 'Are you sure you want to revoke this access for {{ share.recipient.username|escapejs }}? They will no longer be able to unlock this file.', { title: 'Revoke Access?', confirmLabel: 'Revoke' })" class="font-mono font-bold text-xs uppercase text-red-500 bg-transparent border-0 cursor-pointer px-3 py-1.5 hover:text-red-700">Revoke</button>
+            <button type="submit" onclick="return BlindBitConfirm(this.form, 'Are you sure you want to revoke this access for {{ share.recipient.username|escapejs }}? They will no longer be able to unlock this file.', { title: 'Revoke Access?', confirmLabel: 'Revoke' })" class="font-mono font-bold text-xs text-red-500 bg-transparent border-0 cursor-pointer px-3 py-1.5 hover:text-red-700">Revoke</button>
           </form>
         {% endif %}
       </div>
@@ -135,12 +135,12 @@ function selectUser(u) {
   shareRecipientName.textContent = u.display_name || u.username;
   if (!u.x25519_public_key) {
     shareBtn.disabled = true;
-    shareBtn.className = 'w-full font-mono font-bold text-xs tracking-wider uppercase bg-gray-300 text-gray-500 border-[2.5px] border-gray-400 py-3.5 flex items-center justify-center gap-2 cursor-not-allowed';
+    shareBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-gray-300 text-gray-500 border-[2.5px] border-gray-400 py-3.5 flex items-center justify-center gap-2 cursor-not-allowed';
     shareBtn.innerHTML = 'Recipient Has Not Set Up Encryption Keys';
     return;
   }
   shareBtn.disabled = false;
-  shareBtn.className = 'w-full font-mono font-bold text-xs tracking-wider uppercase bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2';
+  shareBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2';
   shareBtn.innerHTML = '<svg class="w-4 h-4 stroke-[#0A0A0A] stroke-[2.5] fill-none" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16,6 12,2 8,6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> Share File';
 }
 
