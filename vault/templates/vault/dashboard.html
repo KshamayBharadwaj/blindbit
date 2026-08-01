@@ -213,7 +213,6 @@
         <select id="file-filter" class="h-10 bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-2 text-sm font-mono focus:outline-none cursor-pointer">
           <option value="all">All files</option>
           <option value="starred">Starred</option>
-          <option value="root">My Files</option>
           {% for folder in folders %}
           {% if not folder.is_favorites %}
           <option value="folder-{{ folder.id }}">{{ folder.name }}</option>
@@ -691,7 +690,6 @@ function applyFilters() {
     var ok = !q || name.indexOf(q) !== -1;
     if (ok && f !== 'all') {
       if (f === 'starred') ok = r.dataset.starred === '1';
-      else if (f === 'root') ok = !r.dataset.folderId;
       else if (f.indexOf('folder-') === 0) ok = r.dataset.folderId === f.slice(7);
     }
     r.classList.toggle('hidden', !ok);
