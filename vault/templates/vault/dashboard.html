@@ -214,6 +214,11 @@
           <option value="all">All files</option>
           <option value="starred">Starred</option>
           <option value="root">My Files</option>
+          {% for folder in folders %}
+          {% if not folder.is_favorites %}
+          <option value="folder-{{ folder.id }}">{{ folder.name }}</option>
+          {% endif %}
+          {% endfor %}
         </select>
       </div>
       {% endif %}
@@ -687,6 +692,7 @@ function applyFilters() {
     if (ok && f !== 'all') {
       if (f === 'starred') ok = r.dataset.starred === '1';
       else if (f === 'root') ok = !r.dataset.folderId;
+      else if (f.indexOf('folder-') === 0) ok = r.dataset.folderId === f.slice(7);
     }
     r.classList.toggle('hidden', !ok);
     if (ok) visible++;
