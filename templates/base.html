@@ -350,18 +350,135 @@ async function blindBitReshare(btn) {
 // Restore master key from session storage on every page load
 (function() {
   var raw = sessionStorage.getItem('blindbit_master_key_raw');
+  if (!raw) return;
+  try {
+    crypto.subtle.importKey('raw', U8(raw), { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']).then(function(k) {
+      window.BlindBitMasterKey = k;
+    });
+  } catch (e) { /* ignore */ }
+})();
+
+// Unlock-modal machinery: prompts for the passphrase whenever the master key
+// is missing (e.g. after passkey-only login or a fresh tab), then caches the
+// raw key in sessionStorage for the rest of the tab session.
+var blindBitUnlockPrompt = null;
+(function() {
+  var modal = document.getElementById('unlock-modal');
+  var form = document.getElementById('unlock-form');
+  var input = document.getElementById('unlock-passphrase');
+  var errorEl = document.getElementById('unlock-error');
+  var submitBtn = document.getElementById('unlock-submit');
+  var cancelBtn = document.getElementById('unlock-cancel');
+  var backdrop = document.getElementById('unlock-backdrop');
+
+  function resolvePrompt(value) {
+    var resolve = blindBitUnlockPrompt;
+    blindBitUnlockPrompt = null;
+    if (resolve) resolve(value);
+  }
+  function hide() {
+    modal.classList.add('hidden');
+    input.value = '';
+    errorEl.classList.add('hidden');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Unlock';
+  }
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    errorEl.classList.add('hidden');
+    var passphrase = input.value;
+    if (!passphrase) {
+      errorEl.textContent = 'Enter your passphrase.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Unlocking...';
+    try {
+      var resp = await fetch('{% url "accounts:login_begin" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ username: '{{ user.username|escapejs }}' }),
+      });
+      var data = await resp.json();
+      if (data.error) throw new Error(data.error);
+      if (!data.has_passphrase || !data.wrapped_master_key_passphrase || !data.passphrase_salt) {
+        throw new Error('No passphrase configured for this account.');
+      }
+      var salt = new Uint8Array(data.passphrase_salt.match(/.{2}/g).map(function(b) { return parseInt(b, 16); }));
+      var wrappingKey = await BlindBitCrypto.deriveKeyFromPassphrase(passphrase, salt);
+      var mk = await BlindBitCrypto.unwrapKey(wrappingKey, data.wrapped_master_key_passphrase);
+      var rawMk = await crypto.subtle.exportKey('raw', mk);
+      sessionStorage.setItem('blindbit_master_key_raw', btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))));
+      window.BlindBitMasterKey = mk;
+      hide();
+      resolvePrompt(mk);
+    } catch (err) {
+      errorEl.textContent = err.message || 'Failed to unlock.';
+      errorEl.classList.remove('hidden');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Unlock';
+    }
+  });
+
+  cancelBtn.addEventListener('click', function() { hide(); resolvePrompt(null); });
+  backdrop.addEventListener('click', function() { hide(); resolvePrompt(null); });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) { hide(); resolvePrompt(null); }
+  });
+})();
+
+// Resolves with the master key (CryptoKey), or null if the user cancels.
+// Never throws — callers decide what to do with a null key.
+async function blindBitEnsureMasterKey() {
+  if (window.BlindBitMasterKey) return window.BlindBitMasterKey;
+  var raw = sessionStorage.getItem('blindbit_master_key_raw');
   if (raw) {
     try {
-      var bytes = U8(raw);
-      crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']).then(function(k) {
-        window.BlindBitMasterKey = k;
-      });
-    } catch(e) { /* ignore */ }
+      var k = await crypto.subtle.importKey('raw', U8(raw), { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']);
+      window.BlindBitMasterKey = k;
+      return k;
+    } catch (e) { /* fall through to prompt */ }
   }
-})();
+  if (blindBitUnlockPrompt) return null; // already prompting
+  var modal = document.getElementById('unlock-modal');
+  modal.classList.remove('hidden');
+  document.getElementById('unlock-passphrase').focus();
+  return new Promise(function(resolve) { blindBitUnlockPrompt = resolve; });
+}
 
 function U8(b64) {
   return new Uint8Array(atob(b64).split('').map(function(c) { return c.charCodeAt(0); }));
+}
+
+// Resolve the per-file decryption key for either access path:
+// 'shared' unseals our X25519 private key, runs ECDH with the sender's
+// ephemeral key and unwraps the per-share file key; 'owner' accepts a
+// raw 32-byte key or one wrapped under the master key.
+async function blindBitFileKey(data) {
+  if (data.access === 'shared') {
+    var mk = await blindBitEnsureMasterKey();
+    if (!mk) throw new Error('Master key required but not available — unlock your keys first.');
+    var myKeysResp = await fetch('/accounts/api/my-keys/');
+    var myKeys = await myKeysResp.json();
+    if (!myKeys.encrypted_x25519_private_key) {
+      throw new Error('Your encryption keys are not set up. Re-register your account to generate them.');
+    }
+    var privKeyBytes = await BlindBitCrypto.decryptFromB64(mk, myKeys.encrypted_x25519_private_key);
+    var privKeyHex = BlindBitX25519.bytesToHex(privKeyBytes);
+    var sharedSecret = await BlindBitX25519.ecdh(privKeyHex, data.ephemeral_public_key);
+    var wrappingKey = await BlindBitX25519.deriveWrappingKey(sharedSecret, data.ephemeral_public_key);
+    return await BlindBitCrypto.unwrapKey(wrappingKey, data.wrapped_file_key);
+  }
+  var fileKeyB64 = data.wrapped_file_key;
+  var fileKeyRaw = U8(fileKeyB64);
+  if (fileKeyRaw.length === 32) {
+    return await crypto.subtle.importKey('raw', fileKeyRaw, { name: 'AES-GCM' }, false, ['decrypt']);
+  }
+  var mk2 = await blindBitEnsureMasterKey();
+  if (!mk2) throw new Error('Master key required but not available — unlock your keys first.');
+  return await BlindBitCrypto.unwrapKey(mk2, fileKeyB64);
 }
 
 async function decryptAndDownload(fileId) {
