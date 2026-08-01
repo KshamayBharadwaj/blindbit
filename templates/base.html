@@ -50,6 +50,20 @@
     .sidebar-link:hover { background: #F0F0EB; transform: translateX(2px); }
     .sidebar-link.active { background: #0A0A0A; color: #CCFF00; font-weight: 700; }
     .sidebar-link.active svg { stroke: #CCFF00; }
+    .view-toggle-btn { background: transparent; }
+    .view-toggle-btn:hover { background: #E8E8E2; }
+    .view-toggle-btn.active { background: #CCFF00; }
+    .star-btn svg { fill: none; transition: fill 0.1s; }
+    .star-btn:hover svg { fill: #E8E8E2; }
+    .star-btn.active svg { fill: #CCFF00; filter: drop-shadow(0 0 3px rgba(204, 255, 0, 0.9)); }
+    .star-btn.active:hover svg { fill: #E8E8E2; }
+    @keyframes starPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.5) rotate(10deg); }
+      70% { transform: scale(0.8) rotate(-5deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+    .star-btn.pop svg { animation: starPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
