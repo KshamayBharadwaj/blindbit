@@ -4,21 +4,162 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponse
-from .models import EncryptedFile
+from django.utils import timezone
+from .models import EncryptedFile, VaultFolder
 from sharing.models import FileShare
 
 @login_required
-def dashboard(request):
+def dashboard(request, folder_id=None):
+    folders = VaultFolder.objects.filter(owner=request.user).order_by('-is_favorites', 'name')
+
+    current_folder = None
+    if folder_id:
+        current_folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
+
     my_files = EncryptedFile.objects.filter(owner=request.user)
+    if current_folder:
+        if current_folder.is_favorites:
+            # Smart folder: shows every starred file regardless of its location
+            my_files = EncryptedFile.objects.filter(owner=request.user, is_favorite=True)
+        else:
+            my_files = my_files.filter(folder=current_folder)
+    # else: root shows every file; the Location column identifies its folder
+
     shared_with_me = FileShare.objects.filter(recipient=request.user, revoked=False)
+
+    # Recent = own + shared files, newest by last open (falling back to upload time)
+    recent = []
+    seen = set()
+    for f in EncryptedFile.objects.filter(owner=request.user).select_related('folder'):
+        if f.id in seen:
+            continue
+        seen.add(f.id)
+        recent.append((f.last_opened_at or f.uploaded_at, f, False, None))
+    for s in shared_with_me.select_related('file'):
+        if s.file_id in seen:
+            continue
+        seen.add(s.file_id)
+        recent.append((s.file.last_opened_at or s.file.uploaded_at, s.file, True, s))
+    recent.sort(key=lambda x: x[0], reverse=True)
+    recent_items = recent[:8]
+
     return render(request, 'vault/dashboard.html', {
         'files': my_files,
         'shared_files': shared_with_me,
+        'folders': folders,
+        'current_folder': current_folder,
+        'recent_items': recent_items,
+        'favorites_count': EncryptedFile.objects.filter(owner=request.user, is_favorite=True).count(),
     })
 
 @login_required
 def upload_view(request):
-    return render(request, 'vault/upload.html')
+    folder_id = request.GET.get('folder')
+    current_folder = None
+    if folder_id:
+        current_folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
+        if current_folder.is_favorites:
+            return redirect('vault:dashboard')
+    return render(request, 'vault/upload.html', {
+        'current_folder': current_folder,
+        'folders': VaultFolder.objects.filter(owner=request.user),
+    })
+
+@login_required
+@require_POST
+def create_folder(request):
+    name = (request.POST.get('name') or '').strip()[:255]
+    if not name:
+        return JsonResponse({'error': 'Folder name is required'}, status=400)
+    folder = VaultFolder.objects.create(owner=request.user, name=name)
+    return JsonResponse({'status': 'ok', 'folder_id': str(folder.id)})
+
+@login_required
+@require_POST
+def delete_folder(request, folder_id):
+    folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
+    if folder.is_favorites:
+        return JsonResponse({'error': 'The Favorites folder cannot be deleted'}, status=400)
+    folder.delete()
+    return JsonResponse({'status': 'ok'})
+
+@login_required
+@require_POST
+def rename_folder(request, folder_id):
+    folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
+    if folder.is_favorites:
+        return JsonResponse({'error': 'The Favorites folder cannot be renamed'}, status=400)
+    name = (request.POST.get('name') or '').strip()[:255]
+    if not name:
+        return JsonResponse({'error': 'Folder name is required'}, status=400)
+    folder.name = name
+    folder.save(update_fields=['name'])
+    return JsonResponse({'status': 'ok'})
+
+@login_required
+@require_POST
+def move_file(request, file_id):
+    file = get_object_or_404(EncryptedFile, id=file_id, owner=request.user)
+    folder_id = request.POST.get('folder_id')
+    if folder_id:
+        folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
+        if folder.is_favorites:
+            return JsonResponse({'error': 'Starred files stay where they are — use the star button instead'}, status=400)
+        file.folder = folder
+    else:
+        file.folder = None
+    file.save(update_fields=['folder', 'updated_at'])
+    return JsonResponse({'status': 'ok'})
+
+@login_required
+@require_POST
+def toggle_favorite(request, file_id):
+    file = get_object_or_404(EncryptedFile, id=file_id, owner=request.user)
+    file.is_favorite = not file.is_favorite
+    file.save(update_fields=['is_favorite'])
+    if file.is_favorite:
+        # Auto-create the Favorites smart folder the first time a file is starred
+        VaultFolder.objects.get_or_create(owner=request.user, is_favorites=True, defaults={'name': 'Favorites'})
+    return JsonResponse({'status': 'ok', 'is_favorite': file.is_favorite})
+
+@login_required
+@require_POST
+def bulk_favorite(request):
+    ids = request.POST.getlist('file_ids')
+    if not ids:
+        return JsonResponse({'error': 'No files selected'}, status=400)
+    files = EncryptedFile.objects.filter(owner=request.user, id__in=ids)
+    value = request.POST.get('is_favorite') == '1'
+    files.update(is_favorite=value)
+    if value:
+        VaultFolder.objects.get_or_create(owner=request.user, is_favorites=True, defaults={'name': 'Favorites'})
+    return JsonResponse({'status': 'ok', 'count': files.count()})
+
+@login_required
+@require_POST
+def bulk_move(request):
+    ids = request.POST.getlist('file_ids')
+    if not ids:
+        return JsonResponse({'error': 'No files selected'}, status=400)
+    folder_id = request.POST.get('folder_id')
+    folder = None
+    if folder_id:
+        folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
+        if folder.is_favorites:
+            return JsonResponse({'error': 'Starred files stay where they are — use the star button instead'}, status=400)
+    EncryptedFile.objects.filter(owner=request.user, id__in=ids).update(folder=folder)
+    return JsonResponse({'status': 'ok', 'count': len(ids)})
+
+@login_required
+@require_POST
+def bulk_delete(request):
+    ids = request.POST.getlist('file_ids')
+    if not ids:
+        return JsonResponse({'error': 'No files selected'}, status=400)
+    qs = EncryptedFile.objects.filter(owner=request.user, id__in=ids)
+    count = qs.count()
+    qs.delete()
+    return JsonResponse({'status': 'ok', 'count': count})
 
 @login_required
 @require_POST
