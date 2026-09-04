@@ -290,7 +290,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   loginBtn.textContent = 'Checking...';
 
   if (!username) {
-    errorEl.textContent = 'Please enter your username.';
+    errorEl.textContent = 'please enter your username.';
     errorEl.classList.remove('hidden');
     loginBtn.disabled = false;
     loginBtn.innerHTML = '<span>Authenticate with Passkey</span><svg class="w-4 h-4 stroke-[#0A0A0A] stroke-[2.5] fill-none flex-shrink-0" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>';
@@ -319,40 +319,58 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         cred.id = b642ab(cred.id);
       });
 
+      var assertion;
       try {
-        var assertion = await navigator.credentials.get({ publicKey: beginData });
-        var assertResp = assertion.response;
-        var credPayload = {
-          id: assertion.id,
-          raw_id: ab2b64(assertion.rawId),
-          response: {
-            client_data_json: ab2b64(assertResp.clientDataJSON),
-            authenticator_data: ab2b64(assertResp.authenticatorData),
-            signature: ab2b64(assertResp.signature),
-            user_handle: assertResp.userHandle ? ab2b64(assertResp.userHandle) : null,
-          },
-        };
+        assertion = await navigator.credentials.get({ publicKey: beginData });
+      } catch (getErr) {
+        var getMsg = 'passkey authentication cancelled or failed. try the passphrase tab.';
+        if (getErr && getErr.name === 'NotAllowedError') {
+          getMsg = 'no matching passkey on this device, or the prompt timed out. use the browser profile where this passkey was created.';
+        } else if (getErr && getErr.name === 'InvalidStateError') {
+          getMsg = 'this passkey does not match your account.';
+        }
+        errorEl.textContent = getMsg;
+        errorEl.classList.remove('hidden');
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<span>Authenticate with Passkey</span><svg class="w-4 h-4 stroke-[#0A0A0A] stroke-[2.5] fill-none flex-shrink-0" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>';
+        return;
+      }
 
+      var assertResp = assertion.response;
+      var credPayload = {
+        id: assertion.id,
+        raw_id: ab2b64(assertion.rawId),
+        response: {
+          client_data_json: ab2b64(assertResp.clientDataJSON),
+          authenticator_data: ab2b64(assertResp.authenticatorData),
+          signature: ab2b64(assertResp.signature),
+          user_handle: assertResp.userHandle ? ab2b64(assertResp.userHandle) : null,
+        },
+      };
+
+      try {
         var completeResp = await fetch('{% url "accounts:login_complete" %}', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
           body: JSON.stringify({ credential: credPayload }),
         });
-        var completeData = await completeResp.json();
+        var completeData = null;
+        try { completeData = await completeResp.json(); } catch (parseErr) {}
 
-        if (completeData.status === 'ok') {
+        if (completeData && completeData.status === 'ok') {
           window.location.href = completeData.is_onboarded ? '{% url "vault:dashboard" %}' : '{% url "accounts:register" %}';
           return;
-        } else {
-          errorEl.textContent = completeData.error || 'Authentication failed.';
-          errorEl.classList.remove('hidden');
         }
-      } catch (assertErr) {
-        errorEl.textContent = 'Passkey authentication cancelled or failed. Try the Passphrase tab.';
+
+        errorEl.textContent = (completeData && completeData.error) ||
+          'authentication failed (server error ' + completeResp.status + ').';
+        errorEl.classList.remove('hidden');
+      } catch (completeErr) {
+        errorEl.textContent = 'connection error while completing sign-in. is the server running?';
         errorEl.classList.remove('hidden');
       }
     } else {
-      errorEl.textContent = 'No passkey found for this account. Use the Passphrase tab or Recovery.';
+      errorEl.textContent = 'no passkey found for this account. use the passphrase tab or recovery.';
       errorEl.classList.remove('hidden');
     }
   } catch (err) {
@@ -376,7 +394,7 @@ document.getElementById('send-otp-btn').addEventListener('click', async () => {
 
   errorEl.classList.add('hidden');
 
-  if (!username) { errorEl.textContent = 'Please enter your username.'; errorEl.classList.remove('hidden'); return; }
+  if (!username) { errorEl.textContent = 'please enter your username.'; errorEl.classList.remove('hidden'); return; }
   if (!passphrase) { errorEl.textContent = 'Please enter your passphrase.'; errorEl.classList.remove('hidden'); return; }
 
   btn.disabled = true;

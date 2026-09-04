@@ -34,8 +34,44 @@ RP_ID = settings.WEBAUTHN_RP_ID
 RP_NAME = settings.WEBAUTHN_RP_NAME
 
 
+def get_rp_id(request):
+    """Return RP ID that matches the current request host.
+
+    The browser enforces that rp.id must be a registrable suffix of the
+    current domain (e.g. spec SecurityError "Invalid domain"). The previous
+    code used a static settings.WEBAUTHN_RP_ID='localhost', so visiting via
+    http://127.0.0.1:8000 or any LAN/production host immediately failed with
+    "Invalid domain" during navigator.credentials.create().
+
+    This helper derives the RP ID from the request host for dev flexibility
+    while still respecting an explicit production config (e.g.
+    BLINDBIT_RP_ID=example.com allows subdomains like app.example.com).
+    """
+    try:
+        host = request.get_host().split(":")[0].strip().lower()
+    except Exception:
+        host = ""
+    configured = (settings.WEBAUTHN_RP_ID or "").strip().lower()
+    # Respect explicit production RP ID if request is that domain or a subdomain
+    if configured and configured != "localhost":
+        if host == configured or host.endswith("." + configured):
+            return configured
+    # Empty / localhost config → use the actual host (covers localhost, 127.0.0.1, LAN IPs, etc.)
+    if host:
+        return host
+    return configured or "localhost"
+
+
 def get_rp_origin(request):
     return request.META.get('HTTP_ORIGIN') or f"{request.scheme}://{request.get_host()}"
+
+
+def get_json_body(request):
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def register_view(request):
@@ -56,7 +92,9 @@ def recovery_view(request):
 
 @require_POST
 def registration_options(request):
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
     username = data.get('username', '').strip()
     email = data.get('email', '').strip()
 
@@ -69,7 +107,7 @@ def registration_options(request):
         return JsonResponse({'error': 'Email already exists'}, status=400)
 
     options = generate_registration_options(
-        rp_id=RP_ID,
+        rp_id=get_rp_id(request),
         rp_name=RP_NAME,
         user_name=username,
         user_display_name=data.get('display_name', username),
@@ -87,7 +125,9 @@ def registration_options(request):
 
 @require_POST
 def register_complete(request):
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
     username = data.get('username', '').strip()
     email = data.get('email', '').strip()
 
@@ -119,7 +159,7 @@ def register_complete(request):
         verification = verify_registration_response(
             credential=credential,
             expected_challenge=expected_challenge,
-            expected_rp_id=RP_ID,
+            expected_rp_id=get_rp_id(request),
             expected_origin=get_rp_origin(request),
         )
     except Exception as e:
@@ -168,7 +208,9 @@ def register_complete(request):
 
 @require_POST
 def login_begin(request):
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
     username = data.get('username', '').strip()
 
     if not username:
@@ -202,7 +244,7 @@ def login_begin(request):
 
     if has_verified_credentials:
         options = generate_authentication_options(
-            rp_id=RP_ID,
+            rp_id=get_rp_id(request),
             allow_credentials=allow_credentials,
             user_verification=UserVerificationRequirement.PREFERRED,
         )
@@ -225,9 +267,14 @@ def login_begin(request):
 
 @require_POST
 def login_complete(request):
-    data = json.loads(request.body)
-    username = request.session.pop('login_username', '')
-    expected_challenge_b64 = request.session.pop('login_challenge', None)
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
+
+    # Keep challenge/username in the session until verification succeeds so a
+    # failed attempt can be retried without restarting the whole ceremony.
+    username = request.session.get('login_username', '')
+    expected_challenge_b64 = request.session.get('login_challenge')
 
     if not username or not expected_challenge_b64:
         return JsonResponse({'error': 'No login session. Please start over.'}, status=400)
@@ -269,13 +316,16 @@ def login_complete(request):
         verify_authentication_response(
             credential=credential,
             expected_challenge=expected_challenge,
-            expected_rp_id=RP_ID,
+            expected_rp_id=get_rp_id(request),
             expected_origin=get_rp_origin(request),
             credential_public_key=base64url_to_bytes(stored_pub_key),
             credential_current_sign_count=0,
         )
     except Exception as e:
         return JsonResponse({'error': f'WebAuthn verification failed: {str(e)}'}, status=400)
+
+    request.session.pop('login_username', None)
+    request.session.pop('login_challenge', None)
 
     login(request, user)
     return JsonResponse({
@@ -287,7 +337,9 @@ def login_complete(request):
 
 @require_POST
 def login_send_otp(request):
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
     username = data.get('username', '').strip()
 
     if not username:
@@ -326,7 +378,9 @@ def login_send_otp(request):
 
 @require_POST
 def login_passphrase(request):
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
     username = data.get('username', '').strip()
     passphrase_verifier = data.get('passphrase_verifier', '').strip()
     otp = data.get('otp', '').strip()
@@ -386,13 +440,13 @@ def login_passphrase(request):
 def add_device_options(request):
     user = request.user
     options = generate_registration_options(
-        rp_id=RP_ID,
+        rp_id=get_rp_id(request),
         rp_name=RP_NAME,
         user_id=str(user.id).encode(),
         user_name=user.username,
         user_display_name=user.display_name or user.username,
         authenticator_selection=AuthenticatorSelectionCriteria(
-            resident_key=ResidentKeyRequirement.RESIDENT_KEY_REQUIRED,
+            resident_key=ResidentKeyRequirement.REQUIRED,
             user_verification=UserVerificationRequirement.REQUIRED,
         ),
     )
@@ -431,7 +485,7 @@ def add_device_complete(request):
         verification = verify_registration_response(
             credential=credential,
             expected_challenge=challenge,
-            expected_rp_id=RP_ID,
+            expected_rp_id=get_rp_id(request),
             expected_origin=get_rp_origin(request),
         )
     except Exception as e:
