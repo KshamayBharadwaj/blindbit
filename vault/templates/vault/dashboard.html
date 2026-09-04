@@ -43,6 +43,23 @@
     </a>
   </div>
 
+  <!-- one-tap unlock upgrade (accounts created before prf support) -->
+  {% if user.wrapped_master_key_recovery and user.encrypted_x25519_private_key and not user.prf_salt %}
+  <div class="bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] shadow-brutal p-6 mb-8">
+    <p class="font-mono font-bold text-xs tracking-wider mb-1">enable one-tap unlock</p>
+    <p class="text-sm max-w-xl mb-4">
+      this account was created before passkey-only unlock. tap below once (with your vault unlocked)
+      to let this passkey restore your encryption key by itself — no passphrase prompt after sign-in.
+    </p>
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="button" id="prf-upgrade-btn" class="font-mono font-bold text-xs tracking-wider bg-[#0A0A0A] text-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal cursor-pointer">
+        enable one-tap unlock
+      </button>
+      <span id="prf-upgrade-msg" class="text-sm font-mono"></span>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Vault setup panel (accounts missing a recovery code or X25519 keys) -->
   {% if not user.wrapped_master_key_recovery or not user.encrypted_x25519_private_key %}
   <div class="bg-[#1B4DFF] text-white border-[2.5px] border-[#0A0A0A] shadow-brutal p-6 mb-8">
@@ -1375,5 +1392,49 @@ uploadForm.addEventListener('submit', async function(e) {
     uploadBtn.innerHTML = 'Retry Upload';
   }
 });
+
+// ── one-tap unlock upgrade (prf) for pre-prf accounts ──
+(function() {
+  var btn = document.getElementById('prf-upgrade-btn');
+  if (!btn) return;
+  var msg = document.getElementById('prf-upgrade-msg');
+  function say(t) { if (msg) msg.textContent = t; }
+  function hexBytes(b) { return Array.from(b).map(function(x){return x.toString(16).padStart(2,'0');}).join(''); }
+  function b64urlBytes(b) { return btoa(String.fromCharCode.apply(null, new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  function b64urlToAb(s) { s=s.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4)s+='='; return Uint8Array.from(atob(s),function(c){return c.charCodeAt(0);}); }
+  function b642abStd(b64) { b64=b64.replace(/-/g,'+').replace(/_/g,'/'); return Uint8Array.from(atob(b64),function(c){return c.charCodeAt(0);}); }
+  async function derivePrfKey(salt, out) {
+    var base = await crypto.subtle.importKey('raw', out, 'HKDF', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt:salt,info:new TextEncoder().encode('BlindBit PRF wrapping key v1')}, base, {name:'AES-GCM',length:256}, false, ['wrapKey','unwrapKey']);
+  }
+  btn.addEventListener('click', async function() {
+    btn.disabled = true; say('unlocking vault…');
+    try {
+      var mk = await blindBitEnsureMasterKey();
+      if (!mk) { say('unlock cancelled — enter your passphrase to continue.'); btn.disabled=false; return; }
+      say('contacting passkey…');
+      var optResp = await fetch('{% url "accounts:prf_upgrade_options" %}', {method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}});
+      var opts = await optResp.json();
+      if (opts.error) throw new Error(opts.error);
+      var salt = crypto.getRandomValues(new Uint8Array(32));
+      opts.challenge = b642abStd(opts.challenge);
+      opts.allowCredentials.forEach(function(c){ c.id = b642abStd(c.id); });
+      opts.extensions = {prf:{eval:{first: b64urlBytes(salt)}}};
+      var assertion;
+      try { assertion = await navigator.credentials.get({publicKey: opts}); }
+      catch(e) { throw new Error('passkey cancelled or prf not supported on this browser/device.'); }
+      var ext = assertion.getClientExtensionResults ? assertion.getClientExtensionResults() : null;
+      if (!ext || !ext.prf || !ext.prf.results || !ext.prf.results.first) throw new Error('this passkey/browser did not return prf output — try chrome/edge on the device where the passkey was created.');
+      var prfOut = b64urlToAb(ext.prf.results.first);
+      var wk = await derivePrfKey(salt, prfOut);
+      var wrapped = await BlindBitCrypto.wrapKey(wk, mk);
+      var saveResp = await fetch('{% url "accounts:enable_prf" %}', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')}, body: JSON.stringify({prf_salt: hexBytes(salt), wrapped_master_key_prf: wrapped, credential_id: assertion.id})});
+      var saveData = await saveResp.json();
+      if (saveData.status !== 'ok') throw new Error(saveData.error || 'could not save prf keys');
+      say('done — next sign-in needs no passphrase on this device.');
+      setTimeout(function(){ window.location.reload(); }, 1200);
+    } catch(e) { say(e.message || 'upgrade failed'); btn.disabled=false; }
+  });
+})();
 </script>
 {% endblock %}

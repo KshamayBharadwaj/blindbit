@@ -446,6 +446,63 @@ def login_passphrase(request):
 
 @login_required
 @require_POST
+def prf_upgrade_options(request):
+    """Return a WebAuthn authentication challenge so the logged-in user can
+    evaluate PRF on their existing passkey and wrap the master key for
+    future passkey-only logins. No verification happens here — the user is
+    already authenticated via session; the assertion is only used client-side
+    to obtain the PRF output."""
+    user = request.user
+    allow_credentials = []
+    for device in user.devices.all():
+        if device.credential_id and device.public_key:
+            allow_credentials.append(PublicKeyCredentialDescriptor(
+                id=base64url_to_bytes(device.credential_id),
+            ))
+    if not allow_credentials:
+        return JsonResponse({'error': 'No passkey found for this account'}, status=400)
+    options = generate_authentication_options(
+        rp_id=get_rp_id(request),
+        allow_credentials=allow_credentials,
+        user_verification=UserVerificationRequirement.PREFERRED,
+    )
+    return JsonResponse(json.loads(options_to_json(options)))
+
+
+@login_required
+@require_POST
+def enable_prf(request):
+    """Save a PRF-wrapped master key for an existing account so future
+    passkey logins restore the key with no passphrase. Server stores opaque
+    ciphertext only (zero-knowledge preserved)."""
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
+    prf_salt = (data.get('prf_salt') or '').strip()
+    wrapped = (data.get('wrapped_master_key_prf') or '').strip()
+    credential_id = (data.get('credential_id') or '').strip()
+    if not prf_salt or not wrapped:
+        return JsonResponse({'error': 'Missing PRF key material'}, status=400)
+    # Basic sanity: hex salt, base64 wrapped blob
+    if len(prf_salt) != 64 or any(c not in '0123456789abcdefABCDEF' for c in prf_salt):
+        return JsonResponse({'error': 'Invalid PRF salt'}, status=400)
+    user = request.user
+    user.prf_salt = prf_salt.lower()
+    user.wrapped_master_key_prf = wrapped
+    user.save(update_fields=['prf_salt', 'wrapped_master_key_prf'])
+    if credential_id:
+        Device.objects.filter(user=user, credential_id=credential_id).update(prf_enabled=True)
+    else:
+        # Fallback: mark the most recently used device
+        latest = user.devices.order_by('-last_used').first()
+        if latest:
+            latest.prf_enabled = True
+            latest.save(update_fields=['prf_enabled'])
+    return JsonResponse({'status': 'ok'})
+
+
+@login_required
+@require_POST
 def add_device_options(request):
     user = request.user
     options = generate_registration_options(
