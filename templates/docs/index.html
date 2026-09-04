@@ -641,25 +641,28 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 });
 
-document.getElementById('doc-search').addEventListener('keydown', (e) => {
-  if (e.key === '/' && e.target === document.body) {
-    e.preventDefault();
-    document.getElementById('doc-search').focus();
-  }
-});
-
-document.getElementById('doc-search').addEventListener('input', (e) => {
-  const query = e.target.value.toLowerCase().trim();
-  const allSections = document.querySelectorAll('.doc-content section');
-  allSections.forEach(section => {
-    if (!query) {
-      section.style.display = 'block';
-      return;
+var docSearch = document.getElementById('doc-search');
+if (docSearch) {
+  docSearch.addEventListener('keydown', (e) => {
+    if (e.key === '/' && e.target === document.body) {
+      e.preventDefault();
+      docSearch.focus();
     }
-    const text = section.textContent.toLowerCase();
-    section.style.display = text.includes(query) ? 'block' : 'none';
   });
-});
+
+  docSearch.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    const allSections = document.querySelectorAll('.doc-content section');
+    allSections.forEach(section => {
+      if (!query) {
+        section.style.display = 'block';
+        return;
+      }
+      const text = section.textContent.toLowerCase();
+      section.style.display = text.includes(query) ? 'block' : 'none';
+    });
+  });
+}
 
 function toggleMobileNav() {
   const sidebar = document.querySelector('.doc-sidebar');

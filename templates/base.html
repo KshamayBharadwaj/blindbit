@@ -149,6 +149,7 @@
       BLINDBIT<span class="text-blindbit-blue text-2xl">.</span>
     </a>
     <div class="flex items-center gap-4">
+      <a href="{% url 'docs' %}" class="text-sm font-medium no-underline text-blindbit-black px-3 py-2">docs</a>
       {% if user.is_authenticated %}
       <a href="{% url 'vault:dashboard' %}" class="font-mono font-bold text-xs tracking-wider no-underline bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-5 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Dashboard</a>
       {% else %}
