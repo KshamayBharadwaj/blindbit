@@ -283,6 +283,28 @@ function hex(salt) {
   return Array.from(salt).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
 }
 
+// WebAuthn PRF helpers: the passkey derives a per-device key from a salt via
+// the PRF extension. That key wraps the master key, so a passkey login can
+// restore it with no passphrase and nothing stored on the device.
+function b64url(bytes) {
+  return ab2b64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64url2ab(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return b642ab(s);
+}
+async function derivePrfWrappingKey(salt, prfOutput) {
+  var base = await crypto.subtle.importKey('raw', prfOutput, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: salt, info: new TextEncoder().encode('BlindBit PRF wrapping key v1') },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['wrapKey', 'unwrapKey']
+  );
+}
+
 // 8 groups of 5 chars from A-Z2-9 (matches the recovery format validation)
 function generateRecoveryCode() {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ23456789';
@@ -346,8 +368,22 @@ createPasskeyBtn.addEventListener('click', async () => {
     data.challenge = b642ab(data.challenge);
     data.user.id = b642ab(data.user.id);
 
+    // WebAuthn PRF: ask the authenticator to derive a per-device key from a
+    // fresh salt during passkey creation. If supported, that key wraps the
+    // master key and future passkey logins restore it without a passphrase.
+    regState.prfSalt = crypto.getRandomValues(new Uint8Array(32));
+    regState.prfOutput = null;
+    data.extensions = { prf: { enable: true, eval: { first: b64url(regState.prfSalt) } } };
+
     const credential = await navigator.credentials.create({ publicKey: data });
     const attResp = credential.response;
+
+    try {
+      const prfResult = credential.getClientExtensionResults();
+      if (prfResult && prfResult.prf && prfResult.prf.results && prfResult.prf.results.first) {
+        regState.prfOutput = b64url2ab(prfResult.prf.results.first);
+      }
+    } catch (e) { /* PRF unsupported — falls back to passphrase or recovery */ }
 
     regState.credential = {
       id: credential.id,
@@ -401,7 +437,14 @@ registerForm.addEventListener('submit', async (e) => {
     const masterKey = await BlindBitCrypto.deriveKeyFromPassphrase(recoveryCode, recoverySalt);
 
     const rawMk = await crypto.subtle.exportKey('raw', masterKey);
-    sessionStorage.setItem('blindbit_master_key_raw', btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))));
+    // Use per-user save helper if available (base.html), otherwise fallback
+    var _usernameForSave = document.getElementById('username').value.trim();
+    if (typeof blindBitSaveMasterKey === 'function') {
+      blindBitSaveMasterKey(btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))), _usernameForSave);
+    } else {
+      sessionStorage.setItem('blindbit_master_key_raw', btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))));
+      try { sessionStorage.setItem('blindbit_master_key_raw_' + _usernameForSave, btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk)))); } catch(e){}
+    }
     window.BlindBitMasterKey = masterKey;
 
     // X25519 identity keypair: public key stored in plaintext so anyone can
@@ -432,6 +475,13 @@ registerForm.addEventListener('submit', async (e) => {
       payload.passphrase_enabled = true;
       payload.passphrase_salt = hex(salt);
       payload.wrapped_master_key_passphrase = await BlindBitCrypto.wrapKey(wrappingKey, masterKey);
+    }
+
+    if (regState.prfOutput) {
+      const prfWrappingKey = await derivePrfWrappingKey(regState.prfSalt, regState.prfOutput);
+      payload.prf_enabled = true;
+      payload.prf_salt = hex(regState.prfSalt);
+      payload.wrapped_master_key_prf = await BlindBitCrypto.wrapKey(prfWrappingKey, masterKey);
     }
 
     // Self-wrapped marker: recovery is keyed by the code itself (see recovery.html)

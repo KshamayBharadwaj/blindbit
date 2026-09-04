@@ -101,7 +101,13 @@ document.getElementById('recovery-form').addEventListener('submit', async (e) =>
       var completeData = await completeResp.json();
       if (completeData.status === 'ok') {
         var rawMk = await crypto.subtle.exportKey('raw', recoveryKey);
-        sessionStorage.setItem('blindbit_master_key_raw', btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))));
+        var rawB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk)));
+        if (typeof blindBitSaveMasterKey === 'function') {
+          blindBitSaveMasterKey(rawB64, username);
+        } else {
+          try { sessionStorage.setItem('blindbit_master_key_raw_' + username, rawB64); } catch(e){}
+          try { sessionStorage.setItem('blindbit_master_key_raw', rawB64); } catch(e){}
+        }
         window.location.href = '{% url "vault:dashboard" %}';
         return;
       }

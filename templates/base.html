@@ -351,15 +351,42 @@ async function blindBitReshare(btn) {
   }
 }
 
-// Restore master key from session storage on every page load
-(function() {
-  var raw = sessionStorage.getItem('blindbit_master_key_raw');
-  if (!raw) return;
-  try {
-    crypto.subtle.importKey('raw', U8(raw), { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']).then(function(k) {
-      window.BlindBitMasterKey = k;
-    });
-  } catch (e) { /* ignore */ }
+// Master-key storage helpers. The key lives only in sessionStorage (per tab,
+// per session) keyed per user so different accounts never leak into each
+// other. Persistent unlocks are handled by WebAuthn PRF instead: the passkey
+// itself restores the key at login, with nothing stored on the device.
+function blindBitKeyName(user) {
+  return 'blindbit_master_key_raw_' + (user || '');
+}
+function blindBitSaveMasterKey(raw, user) {
+  try { sessionStorage.setItem(blindBitKeyName(user), raw); } catch (e) { /* storage unavailable */ }
+}
+function blindBitLoadMasterKey(user) {
+  var u = user || '';
+  var raw = null;
+  try { raw = sessionStorage.getItem(blindBitKeyName(u)); } catch (e) {}
+  if (raw) return raw;
+  // Legacy: keys stored before per-user naming
+  if (!u) return null;
+  try { raw = sessionStorage.getItem('blindbit_master_key_raw'); } catch (e) {}
+  return raw;
+}
+
+// Restore master key from storage on every page load. The import is
+// async, so expose a promise: code that needs the key can await it instead of
+// showing the unlock prompt during the first few milliseconds of page load.
+var blindBitKeyRestorePromise = (function() {
+  // Remove any key persisted to localStorage by the earlier "remember on
+  // device" build — that storage is no longer read or written.
+  try { localStorage.removeItem(blindBitKeyName('{{ user.username|escapejs }}')); } catch (e) { /* ignore */ }
+  try { localStorage.removeItem('blindbit_master_key_raw'); } catch (e) { /* ignore */ }
+  try { localStorage.removeItem('blindbit_master_key_raw_{{ user.username|escapejs }}'); } catch (e) { /* ignore */ }
+  var raw = blindBitLoadMasterKey('{{ user.username|escapejs }}');
+  if (!raw) return null;
+  return crypto.subtle.importKey('raw', U8(raw), { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']).then(function(k) {
+    window.BlindBitMasterKey = k;
+    return k;
+  }).catch(function() { return null; });
 })();
 
 // Unlock-modal machinery: prompts for the passphrase whenever the master key
@@ -414,7 +441,7 @@ var blindBitUnlockPrompt = null;
       var wrappingKey = await BlindBitCrypto.deriveKeyFromPassphrase(passphrase, salt);
       var mk = await BlindBitCrypto.unwrapKey(wrappingKey, data.wrapped_master_key_passphrase);
       var rawMk = await crypto.subtle.exportKey('raw', mk);
-      sessionStorage.setItem('blindbit_master_key_raw', btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))));
+      blindBitSaveMasterKey(btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))), '{{ user.username|escapejs }}');
       window.BlindBitMasterKey = mk;
       hide();
       resolvePrompt(mk);
@@ -437,7 +464,12 @@ var blindBitUnlockPrompt = null;
 // Never throws — callers decide what to do with a null key.
 async function blindBitEnsureMasterKey() {
   if (window.BlindBitMasterKey) return window.BlindBitMasterKey;
-  var raw = sessionStorage.getItem('blindbit_master_key_raw');
+  if (blindBitKeyRestorePromise) {
+    var p = blindBitKeyRestorePromise;
+    blindBitKeyRestorePromise = null;
+    if (await p && window.BlindBitMasterKey) return window.BlindBitMasterKey;
+  }
+  var raw = blindBitLoadMasterKey('{{ user.username|escapejs }}');
   if (raw) {
     try {
       var k = await crypto.subtle.importKey('raw', U8(raw), { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']);

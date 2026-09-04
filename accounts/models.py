@@ -9,6 +9,7 @@ class User(AbstractUser):
     x25519_public_key = models.TextField(blank=True, help_text="Hex-encoded X25519 public key for sharing ECDH")
     encrypted_x25519_private_key = models.TextField(blank=True, help_text="X25519 private key wrapped under the Master Key")
     wrapped_master_key_prf = models.TextField(blank=True, help_text="Master Key wrapped under PRF-derived key")
+    prf_salt = models.TextField(blank=True, help_text="Random salt (hex) for WebAuthn PRF key derivation")
     wrapped_master_key_passphrase = models.TextField(blank=True, help_text="Master Key wrapped under Argon2id-derived passphrase key")
     wrapped_master_key_recovery = models.TextField(blank=True, help_text="Master Key wrapped under recovery phrase key")
     recovery_phrase_confirmed = models.BooleanField(default=False)

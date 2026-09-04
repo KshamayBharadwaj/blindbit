@@ -169,6 +169,7 @@ def register_complete(request):
     x25519_pub = data.get('x25519_public_key', '')
     x25519_enc_priv = data.get('encrypted_x25519_private_key', '')
     wrapped_mk_prf = data.get('wrapped_master_key_prf', '')
+    prf_salt = data.get('prf_salt', '')
     wrapped_mk_pass = data.get('wrapped_master_key_passphrase', '')
     wrapped_mk_recovery = data.get('wrapped_master_key_recovery', '')
     passphrase_enabled = data.get('passphrase_enabled', False)
@@ -186,6 +187,7 @@ def register_complete(request):
         x25519_public_key=x25519_pub,
         encrypted_x25519_private_key=x25519_enc_priv,
         wrapped_master_key_prf=wrapped_mk_prf or '',
+        prf_salt=prf_salt or '',
         wrapped_master_key_passphrase=wrapped_mk_pass or '',
         wrapped_master_key_recovery=wrapped_mk_recovery or '',
         passphrase_enabled=passphrase_enabled,
@@ -241,6 +243,13 @@ def login_begin(request):
     if has_passphrase:
         result['wrapped_master_key_passphrase'] = user.wrapped_master_key_passphrase
         result['passphrase_salt'] = user.passphrase_salt
+
+    # PRF (prf-enabled passkey): the client can restore the master key from the
+    # passkey itself, with no passphrase and no stored secrets on the device.
+    if user.prf_salt and user.wrapped_master_key_prf:
+        result['prf_enabled'] = True
+        result['prf_salt'] = user.prf_salt
+        result['wrapped_master_key_prf'] = user.wrapped_master_key_prf
 
     if has_verified_credentials:
         options = generate_authentication_options(

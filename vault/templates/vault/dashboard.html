@@ -1017,7 +1017,13 @@ if (bulkMoveBtn) bulkMoveBtn.addEventListener('click', function(e) {
       var recoverySalt = new TextEncoder().encode('BlindBit recovery key derivation');
       var masterKey = await BlindBitCrypto.deriveKeyFromPassphrase(recoveryCode, recoverySalt);
       var rawMk = await crypto.subtle.exportKey('raw', masterKey);
-      sessionStorage.setItem('blindbit_master_key_raw', btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))));
+      var rawB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk)));
+      if (typeof blindBitSaveMasterKey === 'function') {
+        blindBitSaveMasterKey(rawB64, '{{ user.username|escapejs }}');
+      } else {
+        try { sessionStorage.setItem('blindbit_master_key_raw_' + '{{ user.username|escapejs }}', rawB64); } catch(e){}
+        try { sessionStorage.setItem('blindbit_master_key_raw', rawB64); } catch(e){}
+      }
       window.BlindBitMasterKey = masterKey;
 
       var payload = {

@@ -261,6 +261,32 @@ function ab2b64(ab) {
   return btoa(String.fromCharCode.apply(null, new Uint8Array(ab)));
 }
 
+function hex2ab(hexStr) {
+  return new Uint8Array(hexStr.match(/.{2}/g).map(function(b) { return parseInt(b, 16); }));
+}
+
+// WebAuthn PRF helpers: the passkey derives a per-device key from the stored
+// salt via the PRF extension; that key unwraps the master key with no
+// passphrase and nothing persisted on the device.
+function b64url(bytes) {
+  return ab2b64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64url2ab(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return b642ab(s);
+}
+async function derivePrfWrappingKey(salt, prfOutput) {
+  var base = await crypto.subtle.importKey('raw', prfOutput, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: salt, info: new TextEncoder().encode('BlindBit PRF wrapping key v1') },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['wrapKey', 'unwrapKey']
+  );
+}
+
 async function sha256Hex(str) {
   var enc = new TextEncoder().encode(str);
   var hash = await crypto.subtle.digest('SHA-256', enc);
@@ -319,6 +345,16 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         cred.id = b642ab(cred.id);
       });
 
+      // PRF: ask the authenticator to evaluate the stored salt so the master
+      // key can be restored from the passkey itself.
+      var prfRequest = null;
+      if (beginData.prf_enabled && beginData.prf_salt && beginData.wrapped_master_key_prf) {
+        try {
+          prfRequest = { salt: hex2ab(beginData.prf_salt), wrapped: beginData.wrapped_master_key_prf };
+          beginData.extensions = { prf: { eval: { first: b64url(prfRequest.salt) } } };
+        } catch (e) { prfRequest = null; }
+      }
+
       var assertion;
       try {
         assertion = await navigator.credentials.get({ publicKey: beginData });
@@ -358,6 +394,27 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         try { completeData = await completeResp.json(); } catch (parseErr) {}
 
         if (completeData && completeData.status === 'ok') {
+          if (prfRequest) {
+            try {
+              const prfResult = assertion.getClientExtensionResults();
+              if (prfResult && prfResult.prf && prfResult.prf.results && prfResult.prf.results.first) {
+                const prfOutput = b64url2ab(prfResult.prf.results.first);
+                const prfWrappingKey = await derivePrfWrappingKey(prfRequest.salt, prfOutput);
+                const mk = await BlindBitCrypto.unwrapKey(prfWrappingKey, prfRequest.wrapped);
+                if (mk) {
+                  window.BlindBitMasterKey = mk;
+                  const rawMk = await crypto.subtle.exportKey('raw', mk);
+                  var rawB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk)));
+                  if (typeof blindBitSaveMasterKey === 'function') {
+                    blindBitSaveMasterKey(rawB64, username);
+                  } else {
+                    try { sessionStorage.setItem('blindbit_master_key_raw_' + username, rawB64); } catch(e){}
+                    try { sessionStorage.setItem('blindbit_master_key_raw', rawB64); } catch(e){}
+                  }
+                }
+              }
+            } catch (e) { /* PRF failed — unlock modal covers passphrase accounts */ }
+          }
           window.location.href = completeData.is_onboarded ? '{% url "vault:dashboard" %}' : '{% url "accounts:register" %}';
           return;
         }
@@ -421,7 +478,13 @@ document.getElementById('send-otp-btn').addEventListener('click', async () => {
         var mk = await BlindBitCrypto.unwrapKey(wrappingKey, wrappedMk);
         window.BlindBitMasterKey = mk;
         var rawMk = await crypto.subtle.exportKey('raw', mk);
-        sessionStorage.setItem('blindbit_master_key_raw', btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk))));
+        var rawB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(rawMk)));
+        if (typeof blindBitSaveMasterKey === 'function') {
+          blindBitSaveMasterKey(rawB64, username);
+        } else {
+          try { sessionStorage.setItem('blindbit_master_key_raw_' + username, rawB64); } catch(e){}
+          try { sessionStorage.setItem('blindbit_master_key_raw', rawB64); } catch(e){}
+        }
         passphraseVerifier = await sha256Hex(wrappedMk);
       } catch (unwrapErr) {
         throw new Error('Invalid passphrase.');
