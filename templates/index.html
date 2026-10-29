@@ -14,17 +14,18 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      box-shadow: none !important;
     }
 
     :root {
-      --bg: #E8E8E2;
-      --black: #0A0A0A;
-      --white: #FAFAF5;
-      --accent: #CCFF00;
-      --blue: #1B4DFF;
-      --border-width: 2.5px;
-      --shadow: 5px 5px 0px var(--black);
-      --shadow-lg: 8px 8px 0px var(--black);
+      --bg: #F7F8FA;
+      --black: #202124;
+      --white: #FFFFFF;
+      --accent: #202124;
+      --blue: #202124;
+      --border-width: 1px;
+      --shadow: none;
+      --shadow-lg: none;
     }
 
     html {
@@ -127,7 +128,7 @@
       align-items: center;
       gap: 10px;
       background: var(--accent);
-      color: var(--black);
+      color: #FFFFFF;
       border: var(--border-width) solid var(--black);
       padding: 10px 22px;
       font-family: 'Space Mono', monospace;
@@ -153,7 +154,7 @@
     .btn-primary svg {
       width: 14px;
       height: 14px;
-      stroke: var(--black);
+      stroke: #FFFFFF;
       stroke-width: 2.5;
       fill: none;
       flex-shrink: 0;
@@ -314,7 +315,7 @@
       align-items: center;
       gap: 12px;
       background: var(--accent);
-      color: var(--black);
+      color: #FFFFFF;
       border: var(--border-width) solid var(--black);
       padding: 18px 36px;
       font-family: 'Space Mono', monospace;
@@ -340,7 +341,7 @@
     .btn-hero svg {
       width: 16px;
       height: 16px;
-      stroke: var(--black);
+      stroke: #FFFFFF;
       stroke-width: 2.5;
       fill: none;
       transition: transform 0.2s;
@@ -416,7 +417,7 @@
       height: auto;
       margin-left: 0;
       padding: 24px 32px 24px 16px;
-      filter: drop-shadow(6px 6px 0px rgba(0,0,0,0.15));
+      filter: none;
     }
 
 
@@ -632,6 +633,7 @@
     }
 
     .bcard-icon--accent { background: var(--accent); }
+    .bcard-icon--accent svg { stroke: var(--white); }
     .bcard-icon--blue   { background: var(--blue); }
     .bcard-icon--blue svg { stroke: var(--white); }
     .bcard-icon--white  { background: var(--white); }
@@ -659,7 +661,7 @@
     .bcard-text {
       font-size: 0.92rem;
       line-height: 1.6;
-      color: #444;
+      color: #6B7280;
       max-width: 280px;
     }
 
@@ -715,7 +717,7 @@
 
     .how-sub {
       font-size: 0.9rem;
-      color: #555;
+      color: #6B7280;
       margin-bottom: 32px;
     }
 
@@ -876,63 +878,63 @@
         <svg class="how-diagram" viewBox="0 0 520 185" fill="none" xmlns="http://www.w3.org/2000/svg">
 
           <!-- Arc connector lines -->
-          <line x1="38"  y1="132" x2="138" y2="90"  stroke="#0A0A0A" stroke-width="1.5" stroke-dasharray="5 4"/>
-          <line x1="138" y1="90"  x2="258" y2="52"  stroke="#0A0A0A" stroke-width="1.5" stroke-dasharray="5 4"/>
-          <line x1="258" y1="52"  x2="378" y2="90"  stroke="#0A0A0A" stroke-width="1.5" stroke-dasharray="5 4"/>
-          <line x1="378" y1="90"  x2="478" y2="132" stroke="#0A0A0A" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <line x1="38"  y1="132" x2="138" y2="90"  stroke="#202124" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <line x1="138" y1="90"  x2="258" y2="52"  stroke="#202124" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <line x1="258" y1="52"  x2="378" y2="90"  stroke="#202124" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <line x1="378" y1="90"  x2="478" y2="132" stroke="#202124" stroke-width="1.5" stroke-dasharray="5 4"/>
 
           <!-- ── Node 1: You — circle ── -->
-          <circle cx="38" cy="132" r="26" fill="#FAFAF5" stroke="#0A0A0A" stroke-width="2"/>
-          <rect x="24" y="156" width="28" height="6" fill="#CCFF00" stroke="#0A0A0A" stroke-width="1.5"/>
-          <svg x="22" y="116" width="32" height="32" viewBox="0 0 24 24" stroke="#0A0A0A" stroke-width="2" fill="none">
+          <circle cx="38" cy="132" r="26" fill="#FFFFFF" stroke="#202124" stroke-width="2"/>
+          <rect x="24" y="156" width="28" height="6" fill="#F3F4F6" stroke="#202124" stroke-width="1.5"/>
+          <svg x="22" y="116" width="32" height="32" viewBox="0 0 24 24" stroke="#202124" stroke-width="2" fill="none">
             <rect x="2" y="3" width="20" height="13" rx="1"/>
             <line x1="2"  y1="19" x2="22" y2="19"/>
             <line x1="9"  y1="16" x2="15" y2="16"/>
           </svg>
-          <text x="38" y="175" text-anchor="middle" font-family="Space Mono,monospace"    font-size="8.5" font-weight="700" fill="#0A0A0A">You</text>
-          <text x="38" y="185" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#666">Your device</text>
+          <text x="38" y="175" text-anchor="middle" font-family="Space Mono,monospace"    font-size="8.5" font-weight="700" fill="#202124">You</text>
+          <text x="38" y="185" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#6B7280">Your device</text>
 
           <!-- ── Node 2: Encrypt — circle ── -->
-          <circle cx="138" cy="90" r="26" fill="#FAFAF5" stroke="#0A0A0A" stroke-width="2"/>
-          <rect x="124" y="114" width="28" height="6" fill="#CCFF00" stroke="#0A0A0A" stroke-width="1.5"/>
-          <svg x="122" y="74" width="32" height="32" viewBox="0 0 24 24" stroke="#0A0A0A" stroke-width="2" fill="none">
+          <circle cx="138" cy="90" r="26" fill="#FFFFFF" stroke="#202124" stroke-width="2"/>
+          <rect x="124" y="114" width="28" height="6" fill="#F3F4F6" stroke="#202124" stroke-width="1.5"/>
+          <svg x="122" y="74" width="32" height="32" viewBox="0 0 24 24" stroke="#202124" stroke-width="2" fill="none">
             <rect x="3" y="11" width="18" height="11" rx="2"/>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
           </svg>
-          <text x="138" y="133" text-anchor="middle" font-family="Space Mono,monospace"    font-size="8.5" font-weight="700" fill="#0A0A0A">Encrypt</text>
-          <text x="138" y="143" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#666">E2E encryption</text>
+          <text x="138" y="133" text-anchor="middle" font-family="Space Mono,monospace"    font-size="8.5" font-weight="700" fill="#202124">Encrypt</text>
+          <text x="138" y="143" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#6B7280">E2E encryption</text>
 
           <!-- ── Node 3: Your Server — dark rect (center) ── -->
-          <rect x="226" y="10"  width="64" height="54" fill="#0A0A0A" stroke="#0A0A0A" stroke-width="2"/>
-          <rect x="226" y="64"  width="64" height="8"  fill="#1B4DFF" stroke="#0A0A0A" stroke-width="2"/>
-          <svg x="242" y="18" width="32" height="38" viewBox="0 0 24 24" stroke="#CCFF00" stroke-width="2" fill="none">
+          <rect x="226" y="10"  width="64" height="54" fill="#202124" stroke="#202124" stroke-width="2"/>
+          <rect x="226" y="64"  width="64" height="8"  fill="#202124" stroke="#202124" stroke-width="2"/>
+          <svg x="242" y="18" width="32" height="38" viewBox="0 0 24 24" stroke="#F3F4F6" stroke-width="2" fill="none">
             <rect x="2" y="2"  width="20" height="8" rx="2"/>
             <rect x="2" y="14" width="20" height="8" rx="2"/>
             <line x1="6" y1="6"  x2="6.01" y2="6"/>
             <line x1="6" y1="18" x2="6.01" y2="18"/>
           </svg>
-          <text x="258" y="84"  text-anchor="middle" font-family="Space Mono,monospace"    font-size="8.5" font-weight="700" fill="#0A0A0A">Your Server</text>
-          <text x="258" y="94"  text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#666">Self-hosted infra</text>
+          <text x="258" y="84"  text-anchor="middle" font-family="Space Mono,monospace"    font-size="8.5" font-weight="700" fill="#202124">Your Server</text>
+          <text x="258" y="94"  text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#6B7280">Self-hosted infra</text>
 
           <!-- ── Node 4: You Control — circle ── -->
-          <circle cx="378" cy="90" r="26" fill="#FAFAF5" stroke="#0A0A0A" stroke-width="2"/>
-          <rect x="364" y="114" width="28" height="6" fill="#1B4DFF" stroke="#0A0A0A" stroke-width="1.5"/>
-          <svg x="362" y="74" width="32" height="32" viewBox="0 0 24 24" stroke="#0A0A0A" stroke-width="2" fill="none">
+          <circle cx="378" cy="90" r="26" fill="#FFFFFF" stroke="#202124" stroke-width="2"/>
+          <rect x="364" y="114" width="28" height="6" fill="#202124" stroke="#202124" stroke-width="1.5"/>
+          <svg x="362" y="74" width="32" height="32" viewBox="0 0 24 24" stroke="#202124" stroke-width="2" fill="none">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
             <circle cx="12" cy="7" r="4"/>
           </svg>
-          <text x="378" y="133" text-anchor="middle" font-family="Space Mono,monospace"    font-size="8.5" font-weight="700" fill="#0A0A0A">You Control</text>
-          <text x="378" y="143" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#666">Permissions</text>
+          <text x="378" y="133" text-anchor="middle" font-family="Space Mono,monospace"    font-size="8.5" font-weight="700" fill="#202124">You Control</text>
+          <text x="378" y="143" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#6B7280">Permissions</text>
 
           <!-- ── Node 5: Always Yours — circle ── -->
-          <circle cx="478" cy="132" r="26" fill="#FAFAF5" stroke="#0A0A0A" stroke-width="2"/>
-          <rect x="464" y="156" width="28" height="6" fill="#1B4DFF" stroke="#0A0A0A" stroke-width="1.5"/>
-          <svg x="462" y="116" width="32" height="32" viewBox="0 0 24 24" stroke="#0A0A0A" stroke-width="2" fill="none">
+          <circle cx="478" cy="132" r="26" fill="#FFFFFF" stroke="#202124" stroke-width="2"/>
+          <rect x="464" y="156" width="28" height="6" fill="#202124" stroke="#202124" stroke-width="1.5"/>
+          <svg x="462" y="116" width="32" height="32" viewBox="0 0 24 24" stroke="#202124" stroke-width="2" fill="none">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             <polyline points="9 12 11 14 15 10"/>
           </svg>
-          <text x="478" y="175" text-anchor="middle" font-family="Space Mono,monospace"    font-size="8.5" font-weight="700" fill="#0A0A0A">Always Yours</text>
-          <text x="478" y="185" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#666">No 3rd-party access</text>
+          <text x="478" y="175" text-anchor="middle" font-family="Space Mono,monospace"    font-size="8.5" font-weight="700" fill="#202124">Always Yours</text>
+          <text x="478" y="185" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#6B7280">No 3rd-party access</text>
 
         </svg>
       </div>
@@ -956,13 +958,13 @@
         </div>
         <div class="bcard-illus">
           <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="16" y="8" width="48" height="56" fill="#FAFAF5" stroke="#0A0A0A" stroke-width="2"/>
-            <rect x="16" y="64" width="48" height="8" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2"/>
-            <line x1="24" y1="20" x2="56" y2="20" stroke="#0A0A0A" stroke-width="1.5"/>
-            <line x1="24" y1="28" x2="56" y2="28" stroke="#0A0A0A" stroke-width="1.5"/>
-            <rect x="24" y="36" width="8" height="8" fill="#1B4DFF" stroke="#0A0A0A" stroke-width="1.5"/>
-            <line x1="38" y1="40" x2="56" y2="40" stroke="#0A0A0A" stroke-width="1.5"/>
-            <line x1="24" y1="52" x2="56" y2="52" stroke="#0A0A0A" stroke-width="1.5"/>
+            <rect x="16" y="8" width="48" height="56" fill="#FFFFFF" stroke="#202124" stroke-width="2"/>
+            <rect x="16" y="64" width="48" height="8" fill="#202124" stroke="#202124" stroke-width="2"/>
+            <line x1="24" y1="20" x2="56" y2="20" stroke="#202124" stroke-width="1.5"/>
+            <line x1="24" y1="28" x2="56" y2="28" stroke="#202124" stroke-width="1.5"/>
+            <rect x="24" y="36" width="8" height="8" fill="#202124" stroke="#202124" stroke-width="1.5"/>
+            <line x1="38" y1="40" x2="56" y2="40" stroke="#202124" stroke-width="1.5"/>
+            <line x1="24" y1="52" x2="56" y2="52" stroke="#202124" stroke-width="1.5"/>
           </svg>
         </div>
         <div class="bcard-corner bcard-corner--accent"></div>
@@ -986,9 +988,9 @@
         </div>
         <div class="bcard-illus">
           <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M40 8L12 20v20c0 20 12.5 32 28 38 15.5-6 28-18 28-38V20L40 8z" fill="#1B4DFF" stroke="#0A0A0A" stroke-width="2"/>
-            <path d="M40 8L12 20v20c0 20 12.5 32 28 38" fill="#FAFAF5" stroke="#0A0A0A" stroke-width="2"/>
-            <polyline points="28,40 36,48 52,32" stroke="#CCFF00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M40 8L12 20v20c0 20 12.5 32 28 38 15.5-6 28-18 28-38V20L40 8z" fill="#202124" stroke="#202124" stroke-width="2"/>
+            <path d="M40 8L12 20v20c0 20 12.5 32 28 38" fill="#FFFFFF" stroke="#202124" stroke-width="2"/>
+            <polyline points="28,40 36,48 52,32" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
         <div class="bcard-corner bcard-corner--blue"></div>
@@ -1037,7 +1039,7 @@
 
     .contact-desc {
       font-size: 0.95rem;
-      color: #555;
+      color: #6B7280;
       line-height: 1.6;
       margin: 0 auto;
     }
@@ -1060,7 +1062,7 @@
     }
 
     .c-method-label {
-      color: rgba(0,0,0,0.4);
+      color: #9CA3AF;
       font-weight: 700;
       font-size: 0.7rem;
     }
@@ -1144,7 +1146,7 @@
       align-items: center;
       gap: 10px;
       background: var(--accent);
-      color: var(--black);
+      color: #FFFFFF;
       border: var(--border-width) solid var(--black);
       padding: 14px 28px;
       font-family: 'Space Mono', monospace;
@@ -1170,7 +1172,7 @@
     .btn-submit svg {
       width: 14px;
       height: 14px;
-      stroke: var(--black);
+      stroke: #FFFFFF;
       stroke-width: 2.5;
       fill: none;
       transition: transform 0.2s;

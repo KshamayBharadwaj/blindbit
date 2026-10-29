@@ -43,6 +43,6 @@ def file_icon(mime_type):
     elif 'json' in mime or 'javascript' in mime or 'xml' in mime or 'html' in mime or 'css' in mime or 'x-python' in mime or 'x-sh' in mime:
         label, color = _TYPES['code']
     return mark_safe(
-        '<span class="w-9 h-9 border-[2.5px] border-[#0A0A0A] %s text-white text-[10px] font-bold '
+        '<span class="w-9 h-9 border border-[#E5E7EB] %s text-white text-[10px] font-bold '
         'flex items-center justify-center flex-shrink-0">%s</span>' % (color, label)
     )

@@ -25,9 +25,9 @@
   <!-- Breadcrumb (inside a folder) -->
   {% if current_folder %}
   <nav class="mb-6 flex items-center gap-2 font-mono text-xs tracking-wider" aria-label="Breadcrumb">
-    <a href="{% url 'vault:dashboard' %}" class="no-underline text-[#1B4DFF] hover:underline">My Files</a>
+    <a href="{% url 'vault:dashboard' %}" class="no-underline text-[#202124] hover:underline">My Files</a>
     <span class="text-gray-400">/</span>
-    <span class="font-bold text-[#0A0A0A] truncate">{{ current_folder.name }}</span>
+    <span class="font-bold text-[#202124] truncate">{{ current_folder.name }}</span>
   </nav>
   {% endif %}
 
@@ -37,15 +37,15 @@
       <h1 class="text-2xl font-bold">{% if current_folder %}{{ current_folder.name }}{% else %}My Vault{% endif %}</h1>
       <p class="text-sm text-gray-500 mt-0.5">Your files are locked and only you can open them.</p>
     </div>
-    <a href="{% url 'vault:upload' %}" onclick="openUploadModal(); return false;" class="flex items-center justify-center gap-2 font-mono font-bold text-xs tracking-wider no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all sm:w-auto w-full">
-      <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <a href="{% url 'vault:upload' %}" onclick="openUploadModal(); return false;" class="flex items-center justify-center gap-2 font-mono font-bold text-xs tracking-wider no-underline bg-[#202124] text-white border border-[#E5E7EB] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all sm:w-auto w-full">
+      <svg class="w-4 h-4 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Upload
     </a>
   </div>
 
   <!-- Vault setup panel (accounts missing a recovery code or X25519 keys) -->
   {% if not user.wrapped_master_key_recovery or not user.encrypted_x25519_private_key %}
-  <div class="bg-[#1B4DFF] text-white border-[2.5px] border-[#0A0A0A] shadow-brutal p-6 mb-8">
+  <div class="bg-[#202124] text-white border border-[#E5E7EB] shadow-brutal p-6 mb-8">
     <div id="restore-step1">
       <p class="font-mono font-bold text-xs tracking-wider text-white/70 mb-1">Set Up Your Vault</p>
       <p class="text-sm text-white/90 max-w-xl mb-5">
@@ -54,7 +54,7 @@
         protect it with a passphrase, and create your encryption keys. Your username, passkey, and existing files
         stay untouched.
       </p>
-      <button type="button" id="restore-begin-btn" class="font-mono font-bold text-xs tracking-wider bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">
+      <button type="button" id="restore-begin-btn" class="font-mono font-bold text-xs tracking-wider bg-[#202124] text-white border border-[#E5E7EB] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">
         Begin Vault Setup
       </button>
     </div>
@@ -64,14 +64,14 @@
         Write this down somewhere safe. It is the only way to rebuild your master key if you lose your passphrase or passkey.
       </p>
       <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-        <code id="restore-code" class="font-mono font-bold text-lg sm:text-xl tracking-wide bg-[#0A0A0A] text-[#CCFF00] px-4 py-3 break-all select-all"></code>
-        <button type="button" id="restore-copy-btn" class="font-mono font-bold text-xs tracking-wider bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer flex-shrink-0">Copy Code</button>
+        <code id="restore-code" class="font-mono font-bold text-lg sm:text-xl tracking-wide bg-[#202124] text-white px-4 py-3 break-all select-all"></code>
+        <button type="button" id="restore-copy-btn" class="font-mono font-bold text-xs tracking-wider bg-white text-[#202124] border border-[#E5E7EB] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer flex-shrink-0">Copy Code</button>
       </div>
       <div class="mb-5 max-w-md">
         <label for="restore-passphrase" class="block text-xs font-mono font-bold text-white/70 mb-1.5">Optional passphrase (min 12 chars)</label>
-        <input type="password" id="restore-passphrase" class="w-full bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-3 py-2.5 font-mono focus:outline-none" placeholder="Leave empty to skip">
+        <input type="password" id="restore-passphrase" class="w-full bg-white text-[#202124] border border-[#E5E7EB] px-3 py-2.5 font-mono focus:outline-none" placeholder="Leave empty to skip">
       </div>
-      <button type="button" id="restore-finish-btn" class="font-mono font-bold text-xs tracking-wider bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">
+      <button type="button" id="restore-finish-btn" class="font-mono font-bold text-xs tracking-wider bg-[#202124] text-white border border-[#E5E7EB] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">
         Finish Vault Setup
       </button>
     </div>
@@ -85,28 +85,28 @@
       <h2 class="font-bold text-lg">Folders</h2>
       <div class="flex items-center gap-3">
         {% if folders %}
-        <div class="flex items-center border-[2.5px] border-[#0A0A0A] bg-white shadow-brutal">
+        <div class="flex items-center border border-[#E5E7EB] bg-white shadow-brutal">
           <button type="button" id="view-grid-btn" class="view-toggle-btn active w-8 h-8 flex items-center justify-center cursor-pointer border-0 transition-colors" aria-label="Grid view">
-            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <svg class="w-4 h-4 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           </button>
           <button type="button" id="view-list-btn" class="view-toggle-btn w-8 h-8 flex items-center justify-center cursor-pointer border-0 transition-colors" aria-label="List view">
-            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            <svg class="w-4 h-4 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           </button>
         </div>
         {% endif %}
-        <button type="button" id="new-folder-btn" class="font-mono font-bold text-xs no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-3 py-1.5 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all cursor-pointer">New Folder</button>
+        <button type="button" id="new-folder-btn" class="font-mono font-bold text-xs no-underline text-[#202124] border border-[#202124] px-3 py-1.5 shadow-brutal hover:bg-[#202124] hover:text-white transition-all cursor-pointer">New Folder</button>
       </div>
     </div>
     {% if folders %}
     <div id="folders-grid-view" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
       {% for folder in folders %}
-      <div class="relative bg-white border-[2.5px] border-[#0A0A0A] p-5 shadow-brutal flex flex-col items-center text-center hover:-translate-y-0.5 hover:shadow-brutal-lg transition-all">
+      <div class="relative bg-white border border-[#E5E7EB] p-5 shadow-brutal flex flex-col items-center text-center hover:-translate-y-0.5 hover:shadow-brutal-lg transition-all">
         {% if not folder.is_favorites %}
-        <button type="button" data-folder-menu-btn class="absolute top-2 right-2 flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#E8E8E2] cursor-pointer border-0 rounded" aria-label="Folder options" aria-haspopup="true">
-          <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>
+        <button type="button" data-folder-menu-btn class="absolute top-2 right-2 flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#F3F4F6] cursor-pointer border-0 rounded" aria-label="Folder options" aria-haspopup="true">
+          <svg class="w-4 h-4 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>
         </button>
-        <div class="folder-menu-dropdown hidden absolute top-10 right-2 z-[70] bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal min-w-[130px]">
-          <button type="button" data-folder-rename-url="{% url 'vault:rename_folder' folder.id %}" data-folder-name="{{ folder.name }}" onclick="openRenameFolderModal(this)" class="w-full text-left font-mono font-bold text-xs px-3 py-2 hover:bg-[#E8E8E2] cursor-pointer border-0 bg-transparent">Rename</button>
+        <div class="folder-menu-dropdown hidden absolute top-10 right-2 z-[70] bg-white border border-[#E5E7EB] shadow-brutal min-w-[130px]">
+          <button type="button" data-folder-rename-url="{% url 'vault:rename_folder' folder.id %}" data-folder-name="{{ folder.name }}" onclick="openRenameFolderModal(this)" class="w-full text-left font-mono font-bold text-xs px-3 py-2 hover:bg-[#F3F4F6] cursor-pointer border-0 bg-transparent">Rename</button>
           <button type="button" data-folder-name="{{ folder.name }}" data-folder-delete-url="{% url 'vault:delete_folder' folder.id %}" onclick="confirmFolderDelete(this)" class="w-full text-left font-mono font-bold text-xs px-3 py-2 text-red-500 hover:bg-red-50 cursor-pointer border-0 bg-transparent">Delete</button>
         </div>
         {% endif %}
@@ -114,47 +114,47 @@
           <div class="w-14 h-14 sm:w-16 sm:h-16 mb-3 flex items-center justify-center">
             {% if folder.is_favorites %}
             <svg viewBox="0 0 24 24" class="w-full h-full">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#202124" stroke="#202124" stroke-width="2" stroke-linejoin="round"/>
             </svg>
             {% else %}
             <svg viewBox="0 0 24 24" class="w-full h-full">
-              <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#202124" stroke="#202124" stroke-width="2" stroke-linejoin="round"/>
             </svg>
             {% endif %}
           </div>
-          <p class="font-semibold truncate max-w-full group-hover:text-[#1B4DFF]">{{ folder.name }}</p>
+          <p class="font-semibold truncate max-w-full group-hover:text-[#202124]">{{ folder.name }}</p>
           <p class="text-xs text-gray-400 mt-0.5">{% if folder.is_favorites %}{{ favorites_count }} starred file{{ favorites_count|pluralize }}{% else %}{{ folder.files.count }} file{{ folder.files.count|pluralize }}{% endif %}</p>
         </a>
       </div>
       {% endfor %}
     </div>
 
-    <div id="folders-list-view" class="hidden bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal divide-y-[2.5px] divide-[#0A0A0A]">
+    <div id="folders-list-view" class="hidden bg-white border border-[#E5E7EB] shadow-brutal divide-y divide-[#E5E7EB]">
       {% for folder in folders %}
-      <div class="relative flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F8F8F5] transition-colors">
+      <div class="relative flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F3F4F6] transition-colors">
         <a href="{% url 'vault:folder_view' folder.id %}" class="no-underline flex items-center gap-3 flex-1 min-w-0 group">
           <div class="w-9 h-9 flex-shrink-0 flex items-center justify-center">
             {% if folder.is_favorites %}
             <svg viewBox="0 0 24 24" class="w-full h-full">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#202124" stroke="#202124" stroke-width="2" stroke-linejoin="round"/>
             </svg>
             {% else %}
             <svg viewBox="0 0 24 24" class="w-full h-full">
-              <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#202124" stroke="#202124" stroke-width="2" stroke-linejoin="round"/>
             </svg>
             {% endif %}
           </div>
           <div class="min-w-0">
-            <p class="font-semibold truncate group-hover:text-[#1B4DFF]">{{ folder.name }}</p>
+            <p class="font-semibold truncate group-hover:text-[#202124]">{{ folder.name }}</p>
             <p class="text-xs text-gray-400">{% if folder.is_favorites %}{{ favorites_count }} starred file{{ favorites_count|pluralize }}{% else %}{{ folder.files.count }} file{{ folder.files.count|pluralize }}{% endif %}</p>
           </div>
         </a>
         {% if not folder.is_favorites %}
-        <button type="button" data-folder-menu-btn class="flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#E8E8E2] cursor-pointer border-0 rounded flex-shrink-0" aria-label="Folder options" aria-haspopup="true">
-          <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>
+        <button type="button" data-folder-menu-btn class="flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#F3F4F6] cursor-pointer border-0 rounded flex-shrink-0" aria-label="Folder options" aria-haspopup="true">
+          <svg class="w-4 h-4 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>
         </button>
-        <div class="folder-menu-dropdown hidden absolute right-0 top-9 z-[70] bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal min-w-[130px]">
-          <button type="button" data-folder-rename-url="{% url 'vault:rename_folder' folder.id %}" data-folder-name="{{ folder.name }}" onclick="openRenameFolderModal(this)" class="w-full text-left font-mono font-bold text-xs px-3 py-2 hover:bg-[#E8E8E2] cursor-pointer border-0 bg-transparent">Rename</button>
+        <div class="folder-menu-dropdown hidden absolute right-0 top-9 z-[70] bg-white border border-[#E5E7EB] shadow-brutal min-w-[130px]">
+          <button type="button" data-folder-rename-url="{% url 'vault:rename_folder' folder.id %}" data-folder-name="{{ folder.name }}" onclick="openRenameFolderModal(this)" class="w-full text-left font-mono font-bold text-xs px-3 py-2 hover:bg-[#F3F4F6] cursor-pointer border-0 bg-transparent">Rename</button>
           <button type="button" data-folder-name="{{ folder.name }}" data-folder-delete-url="{% url 'vault:delete_folder' folder.id %}" onclick="confirmFolderDelete(this)" class="w-full text-left font-mono font-bold text-xs px-3 py-2 text-red-500 hover:bg-red-50 cursor-pointer border-0 bg-transparent">Delete</button>
         </div>
         {% endif %}
@@ -172,9 +172,9 @@
   {% if recent_items %}
   <div class="mb-8">
     <h2 class="font-bold text-lg mb-4">Recent</h2>
-    <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal divide-y-[2.5px] divide-[#0A0A0A]">
+    <div class="bg-white border border-[#E5E7EB] shadow-brutal divide-y divide-[#E5E7EB]">
       {% for item in recent_items %}
-      <div class="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F8F8F5] transition-colors cursor-pointer" data-row-open="{{ item.1.id }}">
+      <div class="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F3F4F6] transition-colors cursor-pointer" data-row-open="{{ item.1.id }}">
         {{ item.1.mime_type|file_icon }}
         <div class="min-w-0 flex-1">
           {% if item.2 %}
@@ -186,10 +186,10 @@
           {% endif %}
         </div>
         <div class="hidden md:block text-xs text-gray-400 flex-shrink-0 md:w-40 lg:w-48 truncate text-right">
-          {% if item.2 %}From <span class="text-[#1B4DFF]">{{ item.2.owner.username }}</span>{% else %}Me · {% if item.1.folder %}{{ item.1.folder.name }}{% else %}My Files{% endif %}{% endif %}
+          {% if item.2 %}From <span class="text-[#202124]">{{ item.2.owner.username }}</span>{% else %}Me · {% if item.1.folder %}{{ item.1.folder.name }}{% else %}My Files{% endif %}{% endif %}
         </div>
-        <button data-download-btn="{{ item.1.id }}" onclick="decryptAndDownload('{{ item.1.id }}')" class="font-mono font-bold text-xs no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-3 py-1.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0">
-          <svg class="w-3.5 h-3.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <button data-download-btn="{{ item.1.id }}" onclick="decryptAndDownload('{{ item.1.id }}')" class="font-mono font-bold text-xs no-underline text-white bg-[#202124] border border-[#E5E7EB] px-3 py-1.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0">
+          <svg class="w-3.5 h-3.5 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Open
         </button>
       </div>
@@ -200,8 +200,8 @@
   {% endif %}
 
   <!-- My Files -->
-  <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal">
-    <div class="border-b-[2.5px] border-[#0A0A0A] px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+  <div class="bg-white border border-[#E5E7EB] shadow-brutal">
+    <div class="border-b border-[#E5E7EB] px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
       <h2 class="font-bold">My Files</h2>
       {% if files %}
       <span class="text-xs text-gray-400 font-mono">{{ files|length }} file{{ files|length|pluralize }}</span>
@@ -209,9 +209,9 @@
       {% if files %}
       <div class="hidden sm:flex-1"></div>
       <div class="flex items-center gap-2">
-        <input type="search" id="file-search" placeholder="Search files…" class="w-full sm:w-56 h-10 bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-3 text-sm focus:outline-none focus:border-[#1B4DFF]">
+        <input type="search" id="file-search" placeholder="Search files…" class="w-full sm:w-56 h-10 bg-white text-[#202124] border border-[#E5E7EB] px-3 text-sm focus:outline-none focus:border-[#202124]">
         {% if not current_folder %}
-        <select id="file-filter" class="h-10 bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-2 text-sm font-mono focus:outline-none cursor-pointer">
+        <select id="file-filter" class="h-10 bg-white text-[#202124] border border-[#E5E7EB] px-2 text-sm font-mono focus:outline-none cursor-pointer">
           <option value="all">All files</option>
           <option value="starred">Starred</option>
           {% for folder in folders %}
@@ -227,24 +227,24 @@
 
     {% if files %}
     <!-- Sortable column headers -->
-    <div id="file-header" class="file-grid hidden md:grid py-3 bg-[#FAFAF5] border-b-[2.5px] border-[#0A0A0A] font-mono font-bold text-[10px] tracking-wider text-gray-400">
-      <input type="checkbox" id="select-all" class="w-4 h-4 accent-[#1B4DFF] cursor-pointer" aria-label="Select all files">
-      <button type="button" data-sort-key="name" class="file-name-header flex items-center gap-1 text-left cursor-pointer border-0 bg-transparent font-mono font-bold text-[10px] tracking-wider text-gray-400 hover:text-[#0A0A0A]">Name<span class="sort-ind"></span></button>
+    <div id="file-header" class="file-grid hidden md:grid py-3 bg-[#FFFFFF] border-b border-[#E5E7EB] font-mono font-bold text-[10px] tracking-wider text-gray-400">
+      <input type="checkbox" id="select-all" class="w-4 h-4 accent-[#202124] cursor-pointer" aria-label="Select all files">
+      <button type="button" data-sort-key="name" class="file-name-header flex items-center gap-1 text-left cursor-pointer border-0 bg-transparent font-mono font-bold text-[10px] tracking-wider text-gray-400 hover:text-[#202124]">Name<span class="sort-ind"></span></button>
       <div class="hidden lg:block">Owner</div>
-      <button type="button" data-sort-key="location" class="hidden md:block text-left cursor-pointer border-0 bg-transparent font-mono font-bold text-[10px] tracking-wider text-gray-400 hover:text-[#0A0A0A]">Location<span class="sort-ind"></span></button>
-      <button type="button" data-sort-key="created" class="hidden md:block text-left cursor-pointer border-0 bg-transparent font-mono font-bold text-[10px] tracking-wider text-gray-400 hover:text-[#0A0A0A]">Created<span class="sort-ind"></span></button>
-      <div class="hidden md:flex justify-center"><svg class="w-3 h-3 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      <button type="button" data-sort-key="location" class="hidden md:block text-left cursor-pointer border-0 bg-transparent font-mono font-bold text-[10px] tracking-wider text-gray-400 hover:text-[#202124]">Location<span class="sort-ind"></span></button>
+      <button type="button" data-sort-key="created" class="hidden md:block text-left cursor-pointer border-0 bg-transparent font-mono font-bold text-[10px] tracking-wider text-gray-400 hover:text-[#202124]">Created<span class="sort-ind"></span></button>
+      <div class="hidden md:flex justify-center"><svg class="w-3 h-3 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
       <div></div>
     </div>
 
-    <div id="file-list" class="divide-y-[2.5px] divide-[#0A0A0A]">
+    <div id="file-list" class="divide-y divide-[#E5E7EB]">
       {% for file in files %}
-      <div class="file-row group relative file-grid py-4 hover:bg-[#F8F8F5] transition-colors cursor-pointer" data-file-id="{{ file.id }}" data-mime="{{ file.mime_type }}" data-location="{% if file.folder %}{{ file.folder.name|escapejs }}{% else %}My Files{% endif %}" data-created="{{ file.uploaded_at|date:'c' }}" data-starred="{% if file.is_favorite %}1{% else %}0{% endif %}" data-row-open="{{ file.id }}" data-delete-url="{% url 'vault:delete' file.id %}" data-move-url="{% url 'vault:move_file' file.id %}" data-folder-id="{% if file.folder %}{{ file.folder.id }}{% endif %}" data-in-folder="{% if file.folder %}1{% else %}0{% endif %}">
-        <input type="checkbox" data-select-check class="w-4 h-4 accent-[#1B4DFF] cursor-pointer" aria-label="Select file">
+      <div class="file-row group relative file-grid py-4 hover:bg-[#F3F4F6] transition-colors cursor-pointer" data-file-id="{{ file.id }}" data-mime="{{ file.mime_type }}" data-location="{% if file.folder %}{{ file.folder.name|escapejs }}{% else %}My Files{% endif %}" data-created="{{ file.uploaded_at|date:'c' }}" data-starred="{% if file.is_favorite %}1{% else %}0{% endif %}" data-row-open="{{ file.id }}" data-delete-url="{% url 'vault:delete' file.id %}" data-move-url="{% url 'vault:move_file' file.id %}" data-folder-id="{% if file.folder %}{{ file.folder.id }}{% endif %}" data-in-folder="{% if file.folder %}1{% else %}0{% endif %}">
+        <input type="checkbox" data-select-check class="w-4 h-4 accent-[#202124] cursor-pointer" aria-label="Select file">
         <div class="min-w-0 flex items-center gap-3">
           {{ file.mime_type|file_icon }}
           <div class="min-w-0">
-            <p class="font-semibold truncate encrypted-filename group-hover:text-[#1B4DFF]" data-encrypted="{{ file.encrypted_filename }}" data-key="{{ file.wrapped_file_key }}">Protected file</p>
+            <p class="font-semibold truncate encrypted-filename group-hover:text-[#202124]" data-encrypted="{{ file.encrypted_filename }}" data-key="{{ file.wrapped_file_key }}">Protected file</p>
             <p class="text-xs text-gray-400 md:hidden">{% if file.last_opened_at %}Opened {{ file.last_opened_at|date:"M j, Y" }}{% else %}Created {{ file.uploaded_at|date:"M j, Y" }}{% endif %} · {% if file.folder %}{{ file.folder.name }}{% else %}My Files{% endif %}</p>
           </div>
         </div>
@@ -252,25 +252,25 @@
         <div class="hidden md:block text-xs text-gray-500 truncate">{% if file.folder %}{{ file.folder.name }}{% else %}My Files{% endif %}</div>
         <div class="hidden md:block text-xs text-gray-500 truncate">{{ file.uploaded_at|date:"M j, Y" }}</div>
         <div class="hidden md:flex justify-center">
-          <button type="button" data-favorite-btn data-favorite-url="{% url 'vault:toggle_favorite' file.id %}" aria-label="Toggle favorite" class="star-btn {% if file.is_favorite %}active{% endif %} flex items-center justify-center w-9 h-9 bg-transparent hover:bg-[#E8E8E2] border-0 rounded cursor-pointer" {% if file.is_favorite %}title="Remove from favorites"{% else %}title="Add to favorites"{% endif %}>
-            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <button type="button" data-favorite-btn data-favorite-url="{% url 'vault:toggle_favorite' file.id %}" aria-label="Toggle favorite" class="star-btn {% if file.is_favorite %}active{% endif %} flex items-center justify-center w-9 h-9 bg-transparent hover:bg-[#F3F4F6] border-0 rounded cursor-pointer" {% if file.is_favorite %}title="Remove from favorites"{% else %}title="Add to favorites"{% endif %}>
+            <svg class="w-4 h-4 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           </button>
         </div>
         <div class="flex items-center justify-end gap-2 flex-shrink-0">
-          <button type="button" data-favorite-btn data-favorite-url="{% url 'vault:toggle_favorite' file.id %}" aria-label="Toggle favorite" class="star-btn md:hidden {% if file.is_favorite %}active{% endif %} flex items-center justify-center w-9 h-9 bg-transparent hover:bg-[#E8E8E2] border-0 rounded cursor-pointer">
-            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <button type="button" data-favorite-btn data-favorite-url="{% url 'vault:toggle_favorite' file.id %}" aria-label="Toggle favorite" class="star-btn md:hidden {% if file.is_favorite %}active{% endif %} flex items-center justify-center w-9 h-9 bg-transparent hover:bg-[#F3F4F6] border-0 rounded cursor-pointer">
+            <svg class="w-4 h-4 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           </button>
-          <button data-download-btn="{{ file.id }}" onclick="decryptAndDownload('{{ file.id }}')" class="font-mono font-bold text-xs no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-3.5 h-9 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-            <svg class="w-3.5 h-3.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <button data-download-btn="{{ file.id }}" onclick="decryptAndDownload('{{ file.id }}')" class="font-mono font-bold text-xs no-underline text-white bg-[#202124] border border-[#E5E7EB] px-3.5 h-9 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <svg class="w-3.5 h-3.5 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download
           </button>
-          <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-3.5 h-9 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all hidden sm:inline-flex items-center justify-center">Share</a>
-          <button type="button" data-file-menu-btn class="flex items-center justify-center w-9 h-9 bg-transparent hover:bg-[#E8E8E2] cursor-pointer border-0 rounded" aria-label="File options" aria-haspopup="true">
-            <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>
+          <a href="{% url 'sharing:share_view' file.id %}" class="font-mono font-bold text-xs no-underline text-[#202124] border border-[#202124] px-3.5 h-9 shadow-brutal hover:bg-[#202124] hover:text-white transition-all hidden sm:inline-flex items-center justify-center">Share</a>
+          <button type="button" data-file-menu-btn class="flex items-center justify-center w-9 h-9 bg-transparent hover:bg-[#F3F4F6] cursor-pointer border-0 rounded" aria-label="File options" aria-haspopup="true">
+            <svg class="w-4 h-4 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>
           </button>
-          <div class="file-menu-dropdown hidden absolute right-2 top-10 z-[70] bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal min-w-[150px]">
-            <button type="button" data-move-open class="w-full text-left font-mono font-bold text-xs px-3 py-2 hover:bg-[#E8E8E2] cursor-pointer border-0 bg-transparent">Move to…</button>
-            <button type="button" onclick="confirmDelete('{{ file.id }}')" class="w-full text-left font-mono font-bold text-xs px-3 py-2 text-red-500 hover:bg-red-50 cursor-pointer border-0 bg-transparent border-t-[2.5px] border-[#0A0A0A]">Delete</button>
+          <div class="file-menu-dropdown hidden absolute right-2 top-10 z-[70] bg-white border border-[#E5E7EB] shadow-brutal min-w-[150px]">
+            <button type="button" data-move-open class="w-full text-left font-mono font-bold text-xs px-3 py-2 hover:bg-[#F3F4F6] cursor-pointer border-0 bg-transparent">Move to…</button>
+            <button type="button" onclick="confirmDelete('{{ file.id }}')" class="w-full text-left font-mono font-bold text-xs px-3 py-2 text-red-500 hover:bg-red-50 cursor-pointer border-0 bg-transparent border-t-[2.5px] border-[#E5E7EB]">Delete</button>
           </div>
         </div>
       </div>
@@ -279,12 +279,12 @@
     <div id="file-empty-filter" class="hidden p-10 text-center text-sm text-gray-400">No files match your search or filter.</div>
     {% else %}
     <div class="p-12 text-center">
-      <div class="w-16 h-16 mx-auto mb-4 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
-        <svg class="w-8 h-8 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      <div class="w-16 h-16 mx-auto mb-4 bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center">
+        <svg class="w-8 h-8 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
       </div>
       <p class="text-gray-500 mb-1">{% if current_folder.is_favorites %}No favorites yet{% else %}{% if current_folder %}This folder is empty{% else %}Your vault is empty{% endif %}{% endif %}</p>
       <p class="text-sm text-gray-400">{% if current_folder.is_favorites %}Tap the star on any file to pin it here.{% else %}Upload your first file to get started.{% endif %}</p>
-      <a href="{% url 'vault:upload' %}" onclick="openUploadModal(); return false;" class="inline-flex items-center gap-2 mt-5 font-mono font-bold text-xs tracking-wider no-underline bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Upload File</a>
+      <a href="{% url 'vault:upload' %}" onclick="openUploadModal(); return false;" class="inline-flex items-center gap-2 mt-5 font-mono font-bold text-xs tracking-wider no-underline bg-[#202124] text-white border border-[#E5E7EB] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all">Upload File</a>
     </div>
     {% endif %}
   </div>
@@ -293,16 +293,16 @@
   {% if shared_files %}
   <div class="mt-8">
     <h2 class="font-bold text-lg mb-4">Shared With You</h2>
-    <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal divide-y-[2.5px] divide-[#0A0A0A]">
+    <div class="bg-white border border-[#E5E7EB] shadow-brutal divide-y divide-[#E5E7EB]">
       {% for share in shared_files %}
-      <div class="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F8F8F5] transition-colors cursor-pointer" data-row-open="{{ share.file.id }}">
+      <div class="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F3F4F6] transition-colors cursor-pointer" data-row-open="{{ share.file.id }}">
         {{ share.file.mime_type|file_icon }}
         <div class="min-w-0 flex-1">
           <p class="font-semibold truncate shared-filename" data-encrypted="{{ share.file.encrypted_filename }}" data-key="{{ share.wrapped_file_key }}" data-ephemeral="{{ share.ephemeral_public_key }}">Protected file</p>
           <p class="text-xs text-gray-400">{% if share.file.last_opened_at %}Opened {{ share.file.last_opened_at|date:"M j, Y" }}{% else %}Shared {{ share.created_at|date:"M j, Y" }}{% endif %}</p>
         </div>
-        <div class="hidden md:block text-xs text-gray-400 flex-shrink-0 md:w-40 lg:w-48 truncate text-right">From <span class="text-[#1B4DFF]">{{ share.owner.username }}</span></div>
-        <button data-download-btn="{{ share.file.id }}" onclick="decryptAndDownload('{{ share.file.id }}')" class="font-mono font-bold text-xs no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-3 py-1.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex-shrink-0 cursor-pointer">Download</button>
+        <div class="hidden md:block text-xs text-gray-400 flex-shrink-0 md:w-40 lg:w-48 truncate text-right">From <span class="text-[#202124]">{{ share.owner.username }}</span></div>
+        <button data-download-btn="{{ share.file.id }}" onclick="decryptAndDownload('{{ share.file.id }}')" class="font-mono font-bold text-xs no-underline text-white bg-[#202124] border border-[#E5E7EB] px-3 py-1.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex-shrink-0 cursor-pointer">Download</button>
       </div>
       {% endfor %}
     </div>
@@ -312,7 +312,7 @@
 
 <!-- Delete confirmation modal -->
 <div id="delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-  <div class="bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] shadow-brutal p-8 max-w-md w-full">
+  <div class="bg-[#FFFFFF] border border-[#E5E7EB] shadow-brutal p-8 max-w-md w-full">
     <h2 class="text-xl font-bold mb-3">Move to Trash?</h2>
     <p class="text-sm text-gray-600 mb-1">
       <span id="delete-file-name" class="font-semibold"></span> will be moved to the Trash.
@@ -321,47 +321,47 @@
       You can restore it from the Trash until it is permanently deleted. Any shares of this file will be revoked.
     </p>
     <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
-      <button type="button" id="delete-cancel" class="font-mono font-bold text-xs tracking-wider no-underline text-[#0A0A0A] bg-white border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Cancel</button>
-      <button type="button" id="delete-confirm" class="font-mono font-bold text-xs tracking-wider no-underline text-white bg-red-500 border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:bg-red-600 hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Move to Trash</button>
+      <button type="button" id="delete-cancel" class="font-mono font-bold text-xs tracking-wider no-underline text-[#202124] bg-white border border-[#E5E7EB] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Cancel</button>
+      <button type="button" id="delete-confirm" class="font-mono font-bold text-xs tracking-wider no-underline text-white bg-red-500 border border-[#E5E7EB] px-4 py-2.5 shadow-brutal hover:bg-red-600 hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Move to Trash</button>
     </div>
   </div>
 </div>
 
 <!-- New folder modal -->
 <div id="new-folder-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-  <div class="bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] shadow-brutal p-8 max-w-md w-full">
+  <div class="bg-[#FFFFFF] border border-[#E5E7EB] shadow-brutal p-8 max-w-md w-full">
     <h2 class="text-xl font-bold mb-3">New Folder</h2>
     <p class="text-sm text-gray-600 mb-5">Folders keep your encrypted files organised. The folder name is visible to you only.</p>
     <label for="new-folder-name" class="block text-xs font-mono font-bold text-gray-500 mb-1.5">Folder name</label>
-    <input type="text" id="new-folder-name" maxlength="255" class="w-full bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-3 py-2.5 font-mono focus:outline-none" placeholder="e.g. Taxes 2026">
+    <input type="text" id="new-folder-name" maxlength="255" class="w-full bg-white text-[#202124] border border-[#E5E7EB] px-3 py-2.5 font-mono focus:outline-none" placeholder="e.g. Taxes 2026">
     <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 mt-6">
-      <button type="button" id="new-folder-cancel" class="font-mono font-bold text-xs tracking-wider no-underline text-[#0A0A0A] bg-white border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Cancel</button>
-      <button type="button" id="new-folder-create" class="font-mono font-bold text-xs tracking-wider no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Create Folder</button>
+      <button type="button" id="new-folder-cancel" class="font-mono font-bold text-xs tracking-wider no-underline text-[#202124] bg-white border border-[#E5E7EB] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Cancel</button>
+      <button type="button" id="new-folder-create" class="font-mono font-bold text-xs tracking-wider no-underline text-white bg-[#202124] border border-[#E5E7EB] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Create Folder</button>
     </div>
   </div>
 </div>
 
 <!-- Rename folder modal -->
 <div id="rename-folder-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-  <div class="bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] shadow-brutal p-8 max-w-md w-full">
+  <div class="bg-[#FFFFFF] border border-[#E5E7EB] shadow-brutal p-8 max-w-md w-full">
     <h2 class="text-xl font-bold mb-3">Rename Folder</h2>
     <p class="text-sm text-gray-600 mb-5">The folder name is visible to you only.</p>
     <label for="rename-folder-name" class="block text-xs font-mono font-bold text-gray-500 mb-1.5">Folder name</label>
-    <input type="text" id="rename-folder-name" maxlength="255" class="w-full bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-3 py-2.5 font-mono focus:outline-none">
+    <input type="text" id="rename-folder-name" maxlength="255" class="w-full bg-white text-[#202124] border border-[#E5E7EB] px-3 py-2.5 font-mono focus:outline-none">
     <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 mt-6">
-      <button type="button" id="rename-folder-cancel" class="font-mono font-bold text-xs tracking-wider no-underline text-[#0A0A0A] bg-white border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Cancel</button>
-      <button type="button" id="rename-folder-save" class="font-mono font-bold text-xs tracking-wider no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Rename</button>
+      <button type="button" id="rename-folder-cancel" class="font-mono font-bold text-xs tracking-wider no-underline text-[#202124] bg-white border border-[#E5E7EB] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Cancel</button>
+      <button type="button" id="rename-folder-save" class="font-mono font-bold text-xs tracking-wider no-underline text-white bg-[#202124] border border-[#E5E7EB] px-4 py-2.5 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer sm:w-auto w-full">Rename</button>
     </div>
   </div>
 </div>
 
 <!-- Move to modal (centered folder picker) -->
 <div id="move-card" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-  <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal w-full max-w-sm">
-    <div class="px-5 py-3 border-b-[2.5px] border-[#0A0A0A] flex items-center justify-between bg-[#FAFAF5]">
+  <div class="bg-white border border-[#E5E7EB] shadow-brutal w-full max-w-sm">
+    <div class="px-5 py-3 border-b border-[#E5E7EB] flex items-center justify-between bg-[#FFFFFF]">
       <p class="font-mono font-bold text-xs tracking-wider">Move to</p>
-      <button type="button" id="move-card-close" class="flex items-center justify-center w-6 h-6 bg-transparent hover:bg-[#E8E8E2] border-0 cursor-pointer rounded" aria-label="Close">
-        <svg class="w-3.5 h-3.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <button type="button" id="move-card-close" class="flex items-center justify-center w-6 h-6 bg-transparent hover:bg-[#F3F4F6] border-0 cursor-pointer rounded" aria-label="Close">
+        <svg class="w-3.5 h-3.5 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <p id="move-card-file" class="text-xs text-gray-500 truncate px-5 pt-3"></p>
@@ -371,21 +371,21 @@
 
 <!-- Upload modal -->
 <div id="upload-modal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-  <div class="bg-[#FAFAF5] border-[2.5px] border-[#0A0A0A] shadow-brutal w-full max-w-lg">
-    <div class="px-5 py-3 border-b-[2.5px] border-[#0A0A0A] flex items-center justify-between bg-[#FAFAF5]">
+  <div class="bg-[#FFFFFF] border border-[#E5E7EB] shadow-brutal w-full max-w-lg">
+    <div class="px-5 py-3 border-b border-[#E5E7EB] flex items-center justify-between bg-[#FFFFFF]">
       <p class="font-mono font-bold text-xs tracking-wider">Upload File</p>
-      <button type="button" id="upload-modal-close" class="flex items-center justify-center w-6 h-6 bg-transparent hover:bg-[#E8E8E2] border-0 cursor-pointer rounded" aria-label="Close">
-        <svg class="w-3.5 h-3.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <button type="button" id="upload-modal-close" class="flex items-center justify-center w-6 h-6 bg-transparent hover:bg-[#F3F4F6] border-0 cursor-pointer rounded" aria-label="Close">
+        <svg class="w-3.5 h-3.5 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <form id="upload-form" class="p-5">
       {% csrf_token %}
       <label for="upload-folder" class="block text-xs font-mono font-bold text-gray-500 mb-1.5">Upload to</label>
-      <select id="upload-folder" class="w-full h-10 bg-white text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] px-2 text-sm font-mono focus:outline-none cursor-pointer mb-4"></select>
+      <select id="upload-folder" class="w-full h-10 bg-white text-[#202124] border border-[#E5E7EB] px-2 text-sm font-mono focus:outline-none cursor-pointer mb-4"></select>
 
-      <div class="file-drop border-[2.5px] border-dashed border-[#0A0A0A] p-8 text-center cursor-pointer mb-4" id="drop-zone">
-        <div class="w-14 h-14 mx-auto mb-3 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
-          <svg class="w-7 h-7 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div class="file-drop border border-dashed border-[#E5E7EB] p-8 text-center cursor-pointer mb-4" id="drop-zone">
+        <div class="w-14 h-14 mx-auto mb-3 bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center">
+          <svg class="w-7 h-7 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </div>
         <p class="font-semibold" id="drop-text">Drop files here or click to browse</p>
         <p class="text-xs text-gray-400 mt-1">Up to {{ max_upload_size_mb }}MB per file · Locked before upload</p>
@@ -399,13 +399,13 @@
           <span id="progress-label">Encrypting & uploading...</span>
           <span id="progress-percent">0%</span>
         </div>
-        <div class="w-full h-[10px] bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A]">
-          <div id="progress-bar" class="h-full bg-[#CCFF00] progress-bar" style="width:0%"></div>
+        <div class="w-full h-[10px] bg-[#F3F4F6] border border-[#E5E7EB]">
+          <div id="progress-bar" class="h-full bg-[#202124] progress-bar" style="width:0%"></div>
         </div>
       </div>
 
       <button type="submit" id="upload-btn" disabled
-        class="w-full font-mono font-bold text-xs tracking-wider bg-gray-300 text-gray-500 border-[2.5px] border-gray-300 py-3 cursor-not-allowed transition-all flex items-center justify-center gap-2">
+        class="w-full font-mono font-bold text-xs tracking-wider bg-gray-300 text-gray-500 border border-gray-300 py-3 cursor-not-allowed transition-all flex items-center justify-center gap-2">
         Select a file to upload
       </button>
 
@@ -415,11 +415,11 @@
 </div>
 
 <!-- Bulk actions bar (multi-select) -->
-<div id="bulk-bar" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-2 sm:gap-3 bg-[#0A0A0A] text-white border-[2.5px] border-[#0A0A0A] shadow-brutal-lg px-4 py-3">
+<div id="bulk-bar" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-2 sm:gap-3 bg-[#202124] text-white border border-[#E5E7EB] shadow-brutal-lg px-4 py-3">
   <p id="bulk-count" class="font-mono font-bold text-xs tracking-wider whitespace-nowrap"></p>
-  <button type="button" id="bulk-star" class="font-mono font-bold text-xs no-underline text-[#0A0A0A] bg-white border-[2.5px] border-white px-3 py-1.5 hover:bg-[#CCFF00] hover:border-[#CCFF00] transition-all cursor-pointer">Star</button>
-  <button type="button" id="bulk-move" class="font-mono font-bold text-xs no-underline text-[#0A0A0A] bg-white border-[2.5px] border-white px-3 py-1.5 hover:bg-[#CCFF00] hover:border-[#CCFF00] transition-all cursor-pointer">Move</button>
-  <button type="button" id="bulk-delete" class="font-mono font-bold text-xs no-underline text-red-500 bg-white border-[2.5px] border-white px-3 py-1.5 hover:bg-red-500 hover:text-white transition-all cursor-pointer">Delete</button>
+  <button type="button" id="bulk-star" class="font-mono font-bold text-xs no-underline text-[#202124] bg-white border border-white px-3 py-1.5 hover:bg-[#202124] hover:border-[#202124] hover:text-white transition-all cursor-pointer">Star</button>
+  <button type="button" id="bulk-move" class="font-mono font-bold text-xs no-underline text-[#202124] bg-white border border-white px-3 py-1.5 hover:bg-[#202124] hover:border-[#202124] hover:text-white transition-all cursor-pointer">Move</button>
+  <button type="button" id="bulk-delete" class="font-mono font-bold text-xs no-underline text-red-500 bg-white border border-white px-3 py-1.5 hover:bg-red-500 hover:text-white transition-all cursor-pointer">Delete</button>
   <button type="button" id="bulk-close" class="flex items-center justify-center w-8 h-8 text-white bg-transparent hover:bg-white/10 border-0 cursor-pointer rounded" aria-label="Clear selection">
     <svg class="w-4 h-4 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>
@@ -854,16 +854,16 @@ moveCard.addEventListener('click', function(e) {
 function buildMoveItems(currentFolderId, inFolder, moveUrl) {
   var items = '';
   if (inFolder) {
-    items += '<button type="button" data-move-target="" data-move-url="' + moveUrl + '" class="w-full flex items-center gap-2.5 text-left px-3 py-2.5 hover:bg-[#E8E8E2] cursor-pointer border-0 bg-transparent">' +
-      '<svg class="w-4 h-4 flex-shrink-0 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>' +
+    items += '<button type="button" data-move-target="" data-move-url="' + moveUrl + '" class="w-full flex items-center gap-2.5 text-left px-3 py-2.5 hover:bg-[#F3F4F6] cursor-pointer border-0 bg-transparent">' +
+      '<svg class="w-4 h-4 flex-shrink-0 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>' +
       '<span class="truncate font-semibold text-sm">My Files (root)</span></button>';
   }
   var hasFolders = false;
   vaultFolders.forEach(function(folder) {
     if (String(folder.id) === String(currentFolderId)) return;
     hasFolders = true;
-    items += '<button type="button" data-move-target="' + folder.id + '" data-move-url="' + moveUrl + '" class="w-full flex items-center gap-2.5 text-left px-3 py-2.5 hover:bg-[#E8E8E2] cursor-pointer border-0 bg-transparent">' +
-      '<svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#CCFF00" stroke="#0A0A0A" stroke-width="2" stroke-linejoin="round"/></svg>' +
+    items += '<button type="button" data-move-target="' + folder.id + '" data-move-url="' + moveUrl + '" class="w-full flex items-center gap-2.5 text-left px-3 py-2.5 hover:bg-[#F3F4F6] cursor-pointer border-0 bg-transparent">' +
+      '<svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#202124" stroke="#202124" stroke-width="2" stroke-linejoin="round"/></svg>' +
       '<span class="truncate font-semibold text-sm">' + folder.name + '</span></button>';
   });
   if (!inFolder && !hasFolders) {
@@ -1131,7 +1131,7 @@ function resetUploadModal() {
   errorMsg.textContent = '';
   dropZone.querySelector('p.font-semibold').textContent = 'Drop files here or click to browse';
   uploadBtn.disabled = true;
-  uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-gray-300 text-gray-500 border-[2.5px] border-gray-300 py-3 cursor-not-allowed transition-all flex items-center justify-center gap-2';
+  uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-gray-300 text-gray-500 border border-gray-300 py-3 cursor-not-allowed transition-all flex items-center justify-center gap-2';
   uploadBtn.innerHTML = 'Select files to upload';
   progressBar.style.width = '0%';
   progressPercent.textContent = '0%';
@@ -1197,8 +1197,8 @@ function handleUploadFiles(fileList) {
   if (uploadQueue.length) {
     renderUploadQueue();
     uploadBtn.disabled = false;
-    uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2';
-    uploadBtn.innerHTML = '<svg class="w-4 h-4 stroke-[#0A0A0A] stroke-[2.5] fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Lock & Upload ' + uploadQueue.length + ' file' + (uploadQueue.length === 1 ? '' : 's');
+    uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-[#202124] text-white border border-[#E5E7EB] py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2';
+    uploadBtn.innerHTML = '<svg class="w-4 h-4 stroke-white stroke-[2.5] fill-none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Lock & Upload ' + uploadQueue.length + ' file' + (uploadQueue.length === 1 ? '' : 's');
   }
 }
 
@@ -1208,10 +1208,10 @@ function renderUploadQueue() {
   if (!pending.length) { fileQueueEl.innerHTML = ''; return; }
   var html = '';
   pending.forEach(function(item) {
-    var badge = item.status === 'encrypting' ? '<span class="text-[#1B4DFF] font-mono text-[10px]">ENCRYPTING</span>'
-      : item.status === 'uploading' ? '<span class="text-[#CCFF00] font-mono text-[10px] bg-[#0A0A0A] px-1">UPLOADING</span>'
+    var badge = item.status === 'encrypting' ? '<span class="text-[#202124] font-mono text-[10px]">ENCRYPTING</span>'
+      : item.status === 'uploading' ? '<span class="text-white font-mono text-[10px] bg-[#202124] px-1">UPLOADING</span>'
       : '<span class="text-gray-400 font-mono text-[10px]">QUEUED</span>';
-    html += '<div class="flex items-center gap-3 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] px-3 py-2 min-w-0">'
+    html += '<div class="flex items-center gap-3 bg-[#F3F4F6] border border-[#E5E7EB] px-3 py-2 min-w-0">'
       + '<span class="font-semibold text-sm truncate flex-1">' + item.file.name + '</span>'
       + '<span class="text-xs text-gray-500 flex-shrink-0">' + formatSize(item.file.size) + '</span>'
       + badge + '</div>';
@@ -1371,7 +1371,7 @@ uploadForm.addEventListener('submit', async function(e) {
   } else {
     progressLabel.textContent = doneItems + ' of ' + items.length + ' uploaded — fix the errors and click Upload to retry the rest.';
     uploadBtn.disabled = false;
-    uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-[#CCFF00] text-[#0A0A0A] border-[2.5px] border-[#0A0A0A] py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2';
+    uploadBtn.className = 'w-full font-mono font-bold text-xs tracking-wider bg-[#202124] text-white border border-[#E5E7EB] py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2';
     uploadBtn.innerHTML = 'Retry Upload';
   }
 });

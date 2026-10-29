@@ -8,38 +8,38 @@
   </div>
 
   <div class="flex gap-2 mb-6">
-    <button id="tab-incoming" class="font-mono font-bold text-xs px-4 py-2 border-[2.5px] border-[#0A0A0A] bg-[#0A0A0A] text-white shadow-brutal cursor-pointer">
+    <button id="tab-incoming" class="font-mono font-bold text-xs px-4 py-2 border border-[#E5E7EB] bg-[#202124] text-white shadow-brutal cursor-pointer">
       Shared With You
-      {% if shares %}<span class="ml-1.5 text-[#CCFF00]">{{ shares|length }}</span>{% endif %}
+      {% if shares %}<span class="ml-1.5 text-white">{{ shares|length }}</span>{% endif %}
     </button>
-    <button id="tab-outgoing" class="font-mono font-bold text-xs px-4 py-2 border-[2.5px] border-[#0A0A0A] bg-white text-[#0A0A0A] shadow-brutal hover:bg-[#E8E8E2] cursor-pointer">
+    <button id="tab-outgoing" class="font-mono font-bold text-xs px-4 py-2 border border-[#E5E7EB] bg-white text-[#202124] shadow-brutal hover:bg-[#F3F4F6] cursor-pointer">
       Shared By You
-      {% if sent_shares %}<span class="ml-1.5 text-[#1B4DFF]">{{ sent_shares|length }}</span>{% endif %}
+      {% if sent_shares %}<span class="ml-1.5 text-[#202124]">{{ sent_shares|length }}</span>{% endif %}
     </button>
   </div>
 
-  <div id="panel-incoming" class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal">
+  <div id="panel-incoming" class="bg-white border border-[#E5E7EB] shadow-brutal">
     {% if shares %}
-    <div class="divide-y-[2.5px] divide-[#0A0A0A]">
+    <div class="divide-y divide-[#E5E7EB]">
       {% for share in shares %}
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:px-5 hover:bg-[#F3F4F6] transition-colors">
         <div class="flex items-center gap-3 min-w-0 flex-1">
-          <div class="w-9 h-9 bg-[#1B4DFF] border-[2.5px] border-[#0A0A0A] flex items-center justify-center flex-shrink-0">
+          <div class="w-9 h-9 bg-[#202124] border border-[#E5E7EB] flex items-center justify-center flex-shrink-0">
             <svg class="w-4.5 h-4.5 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
           <div class="min-w-0">
             <p class="font-semibold truncate shared-filename" data-encrypted="{{ share.file.encrypted_filename }}" data-key="{{ share.wrapped_file_key }}" data-ephemeral="{{ share.ephemeral_public_key }}">Protected file</p>
-            <p class="text-xs text-gray-400">From <span class="text-[#1B4DFF]">{{ share.owner.username }}</span> · {{ share.created_at|date:"M j, Y" }}</p>
+            <p class="text-xs text-gray-400">From <span class="text-[#202124]">{{ share.owner.username }}</span> · {{ share.created_at|date:"M j, Y" }}</p>
           </div>
         </div>
-        <button data-download-btn="{{ share.file.id }}" onclick="decryptAndDownload('{{ share.file.id }}')" class="font-mono font-bold text-xs no-underline text-[#0A0A0A] bg-[#CCFF00] border-[2.5px] border-[#0A0A0A] px-4 py-2 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex-shrink-0 sm:ml-3 cursor-pointer self-start sm:self-auto">Open</button>
+        <button data-download-btn="{{ share.file.id }}" onclick="decryptAndDownload('{{ share.file.id }}')" class="font-mono font-bold text-xs no-underline text-white bg-[#202124] border border-[#E5E7EB] px-4 py-2 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all flex-shrink-0 sm:ml-3 cursor-pointer self-start sm:self-auto">Open</button>
       </div>
       {% endfor %}
     </div>
     {% else %}
     <div class="p-12 text-center">
-      <div class="w-16 h-16 mx-auto mb-4 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
-        <svg class="w-8 h-8 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <div class="w-16 h-16 mx-auto mb-4 bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center">
+        <svg class="w-8 h-8 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </div>
       <p class="text-gray-500">Nothing shared with you yet</p>
       <p class="text-sm text-gray-400 mt-1">When someone shares a file, it will appear here.</p>
@@ -47,33 +47,33 @@
     {% endif %}
   </div>
 
-  <div id="panel-outgoing" class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal hidden">
+  <div id="panel-outgoing" class="bg-white border border-[#E5E7EB] shadow-brutal hidden">
     {% if sent_shares %}
-    <div class="divide-y-[2.5px] divide-[#0A0A0A]">
+    <div class="divide-y divide-[#E5E7EB]">
       {% for share in sent_shares %}
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:px-5 hover:bg-[#F8F8F5] transition-colors">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:px-5 hover:bg-[#F3F4F6] transition-colors">
         <div class="flex items-center gap-3 min-w-0 flex-1">
-          <div class="w-9 h-9 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center flex-shrink-0">
-            <svg class="w-4.5 h-4.5 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+          <div class="w-9 h-9 bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center flex-shrink-0">
+            <svg class="w-4.5 h-4.5 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
           </div>
           <div class="min-w-0">
             <p class="font-semibold truncate sent-filename" data-encrypted="{{ share.file.encrypted_filename }}" data-key="{{ share.file.wrapped_file_key }}">Protected file</p>
-            <p class="text-xs text-gray-400">To <span class="text-[#1B4DFF]">{{ share.recipient.username }}</span> · {{ share.created_at|date:"M j, Y" }}</p>
+            <p class="text-xs text-gray-400">To <span class="text-[#202124]">{{ share.recipient.username }}</span> · {{ share.created_at|date:"M j, Y" }}</p>
           </div>
         </div>
         {% if share.revoked %}
         <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
-          <span class="font-mono font-bold text-xs text-red-500 bg-red-50 border-[2.5px] border-red-500 px-3 py-2">Revoked</span>
-          <button type="button" onclick="var b=this; BlindBitConfirm.show(function(){ blindBitReshare(b) }, 'Give access back to {{ share.recipient.username|escapejs }}? They will be able to unlock this file again.', { title: 'Re-give Access?', confirmLabel: 'Re-share' })" data-file-id="{{ share.file.id }}" data-recipient="{{ share.recipient.username }}" data-file-key="{{ share.file.wrapped_file_key }}" class="font-mono font-bold text-xs text-white bg-[#1B4DFF] border-[2.5px] border-[#0A0A0A] px-4 py-2 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Re-share</button>
+          <span class="font-mono font-bold text-xs text-red-500 bg-red-50 border border-red-500 px-3 py-2">Revoked</span>
+          <button type="button" onclick="var b=this; BlindBitConfirm.show(function(){ blindBitReshare(b) }, 'Give access back to {{ share.recipient.username|escapejs }}? They will be able to unlock this file again.', { title: 'Re-give Access?', confirmLabel: 'Re-share' })" data-file-id="{{ share.file.id }}" data-recipient="{{ share.recipient.username }}" data-file-key="{{ share.file.wrapped_file_key }}" class="font-mono font-bold text-xs text-white bg-[#202124] border border-[#E5E7EB] px-4 py-2 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Re-share</button>
           <form method="post" action="{% url 'sharing:delete_share' share.id %}">
             {% csrf_token %}
-            <button type="submit" onclick="return BlindBitConfirm(this.form, 'Delete this share from your history? This cannot be undone.', { title: 'Delete Share?', confirmLabel: 'Delete' })" class="font-mono font-bold text-xs text-[#0A0A0A] bg-white border-[2.5px] border-[#0A0A0A] px-4 py-2 shadow-brutal hover:bg-red-500 hover:text-white hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Delete</button>
+            <button type="submit" onclick="return BlindBitConfirm(this.form, 'Delete this share from your history? This cannot be undone.', { title: 'Delete Share?', confirmLabel: 'Delete' })" class="font-mono font-bold text-xs text-[#202124] bg-white border border-[#E5E7EB] px-4 py-2 shadow-brutal hover:bg-red-500 hover:text-white hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Delete</button>
           </form>
         </div>
         {% else %}
         <form method="post" action="{% url 'sharing:revoke_share' share.id %}" class="flex-shrink-0">
           {% csrf_token %}
-          <button type="submit" onclick="return BlindBitConfirm(this.form, 'Are you sure you want to revoke this access for {{ share.recipient.username|escapejs }}? They will no longer be able to unlock this file.', { title: 'Revoke Access?', confirmLabel: 'Revoke' })" class="font-mono font-bold text-xs text-white bg-red-500 border-[2.5px] border-[#0A0A0A] px-4 py-2 shadow-brutal hover:bg-red-600 hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Revoke</button>
+          <button type="submit" onclick="return BlindBitConfirm(this.form, 'Are you sure you want to revoke this access for {{ share.recipient.username|escapejs }}? They will no longer be able to unlock this file.', { title: 'Revoke Access?', confirmLabel: 'Revoke' })" class="font-mono font-bold text-xs text-white bg-red-500 border border-[#E5E7EB] px-4 py-2 shadow-brutal hover:bg-red-600 hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">Revoke</button>
         </form>
         {% endif %}
       </div>
@@ -81,8 +81,8 @@
     </div>
     {% else %}
     <div class="p-12 text-center">
-      <div class="w-16 h-16 mx-auto mb-4 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
-        <svg class="w-8 h-8 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+      <div class="w-16 h-16 mx-auto mb-4 bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center">
+        <svg class="w-8 h-8 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
       </div>
       <p class="text-gray-500">You haven't shared any files yet</p>
       <p class="text-sm text-gray-400 mt-1">Share a file from your vault to see it here.</p>
@@ -116,7 +116,7 @@
     var panels = [panelIncoming, panelOutgoing];
     for (var i = 0; i < tabs.length; i++) {
       var active = tabs[i] === tab;
-      tabs[i].className = 'font-mono font-bold text-xs px-4 py-2 border-[2.5px] border-[#0A0A0A] shadow-brutal cursor-pointer ' + (active ? 'bg-[#0A0A0A] text-white' : 'bg-white text-[#0A0A0A] hover:bg-[#E8E8E2]');
+      tabs[i].className = 'font-mono font-bold text-xs px-4 py-2 border border-[#E5E7EB] shadow-brutal cursor-pointer ' + (active ? 'bg-[#202124] text-white' : 'bg-white text-[#202124] hover:bg-[#F3F4F6]');
       panels[i].classList.toggle('hidden', panels[i] !== panel);
     }
   }

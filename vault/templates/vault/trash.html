@@ -13,15 +13,15 @@
     <div class="flex items-center gap-3">
       {% if trash_count %}
       <span class="text-xs text-gray-400 font-mono">{{ trash_count }} item{{ trash_count|pluralize }}</span>
-      <button type="button" id="empty-trash-btn" class="font-mono font-bold text-xs no-underline text-red-500 bg-white border-[2.5px] border-red-500 px-3 py-2 shadow-brutal hover:bg-red-500 hover:text-white transition-all cursor-pointer">Empty Trash</button>
+      <button type="button" id="empty-trash-btn" class="font-mono font-bold text-xs no-underline text-red-500 bg-white border border-red-500 px-3 py-2 shadow-brutal hover:bg-red-500 hover:text-white transition-all cursor-pointer">Empty Trash</button>
       {% endif %}
     </div>
   </div>
 
   {% if trashed_files %}
-  <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal divide-y-[2.5px] divide-[#0A0A0A]">
+  <div class="bg-white border border-[#E5E7EB] shadow-brutal divide-y divide-[#E5E7EB]">
     {% for file in trashed_files %}
-    <div class="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F8F8F5] transition-colors">
+    <div class="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-[#F3F4F6] transition-colors">
       {{ file.mime_type|file_icon }}
       <div class="min-w-0 flex-1">
         <p class="font-semibold truncate">Protected file</p>
@@ -30,17 +30,17 @@
       <div class="flex items-center gap-2 flex-shrink-0">
         <form method="post" action="{% url 'vault:restore_file' file.id %}" class="inline">
           {% csrf_token %}
-          <button type="submit" class="font-mono font-bold text-xs no-underline text-[#1B4DFF] border-[2.5px] border-[#1B4DFF] px-3 py-1.5 shadow-brutal hover:bg-[#1B4DFF] hover:text-white transition-all cursor-pointer">Restore</button>
+          <button type="submit" class="font-mono font-bold text-xs no-underline text-[#202124] border border-[#202124] px-3 py-1.5 shadow-brutal hover:bg-[#202124] hover:text-white transition-all cursor-pointer">Restore</button>
         </form>
-        <button type="button" data-purge-url="{% url 'vault:purge_file' file.id %}" data-file-id="{{ file.id }}" onclick="confirmPurge(this)" class="font-mono font-bold text-xs no-underline text-red-500 border-[2.5px] border-red-500 px-3 py-1.5 shadow-brutal hover:bg-red-500 hover:text-white transition-all cursor-pointer">Delete forever</button>
+        <button type="button" data-purge-url="{% url 'vault:purge_file' file.id %}" data-file-id="{{ file.id }}" onclick="confirmPurge(this)" class="font-mono font-bold text-xs no-underline text-red-500 border border-red-500 px-3 py-1.5 shadow-brutal hover:bg-red-500 hover:text-white transition-all cursor-pointer">Delete forever</button>
       </div>
     </div>
     {% endfor %}
   </div>
   {% else %}
-  <div class="p-12 text-center bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal">
-    <div class="w-16 h-16 mx-auto mb-4 bg-[#E8E8E2] border-[2.5px] border-[#0A0A0A] flex items-center justify-center">
-      <svg class="w-8 h-8 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+  <div class="p-12 text-center bg-white border border-[#E5E7EB] shadow-brutal">
+    <div class="w-16 h-16 mx-auto mb-4 bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center">
+      <svg class="w-8 h-8 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
     </div>
     <p class="text-gray-500 mb-1">Trash is empty</p>
     <p class="text-sm text-gray-400">Deleted files will appear here so you can restore them.</p>
@@ -50,14 +50,14 @@
 
 <!-- Purge confirm modal -->
 <div id="purge-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-  <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal p-6 w-full max-w-sm">
+  <div class="bg-white border border-[#E5E7EB] shadow-brutal p-6 w-full max-w-sm">
     <h2 class="font-bold text-lg mb-2">Delete forever?</h2>
     <p class="text-sm text-gray-500 mb-5">This file cannot be recovered after permanent deletion.</p>
     <form id="purge-form" method="post" action="">
       {% csrf_token %}
       <div class="flex gap-2">
-        <button type="button" id="purge-cancel" class="flex-1 font-mono font-bold text-xs px-4 py-2.5 border-[2.5px] border-[#0A0A0A] bg-white hover:bg-[#E8E8E2] cursor-pointer">Cancel</button>
-        <button type="submit" class="flex-1 font-mono font-bold text-xs px-4 py-2.5 border-[2.5px] border-red-500 bg-red-500 text-white hover:bg-red-600 cursor-pointer">Delete forever</button>
+        <button type="button" id="purge-cancel" class="flex-1 font-mono font-bold text-xs px-4 py-2.5 border border-[#E5E7EB] bg-white hover:bg-[#F3F4F6] cursor-pointer">Cancel</button>
+        <button type="submit" class="flex-1 font-mono font-bold text-xs px-4 py-2.5 border border-red-500 bg-red-500 text-white hover:bg-red-600 cursor-pointer">Delete forever</button>
       </div>
     </form>
   </div>
@@ -65,14 +65,14 @@
 
 <!-- Empty trash confirm modal -->
 <div id="empty-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-  <div class="bg-white border-[2.5px] border-[#0A0A0A] shadow-brutal p-6 w-full max-w-sm">
+  <div class="bg-white border border-[#E5E7EB] shadow-brutal p-6 w-full max-w-sm">
     <h2 class="font-bold text-lg mb-2">Empty Trash?</h2>
     <p class="text-sm text-gray-500 mb-5">All {{ trash_count }} item{{ trash_count|pluralize }} will be permanently deleted.</p>
     <form id="empty-form" method="post" action="{% url 'vault:empty_trash' %}">
       {% csrf_token %}
       <div class="flex gap-2">
-        <button type="button" id="empty-cancel" class="flex-1 font-mono font-bold text-xs px-4 py-2.5 border-[2.5px] border-[#0A0A0A] bg-white hover:bg-[#E8E8E2] cursor-pointer">Cancel</button>
-        <button type="submit" class="flex-1 font-mono font-bold text-xs px-4 py-2.5 border-[2.5px] border-red-500 bg-red-500 text-white hover:bg-red-600 cursor-pointer">Empty Trash</button>
+        <button type="button" id="empty-cancel" class="flex-1 font-mono font-bold text-xs px-4 py-2.5 border border-[#E5E7EB] bg-white hover:bg-[#F3F4F6] cursor-pointer">Cancel</button>
+        <button type="submit" class="flex-1 font-mono font-bold text-xs px-4 py-2.5 border border-red-500 bg-red-500 text-white hover:bg-red-600 cursor-pointer">Empty Trash</button>
       </div>
     </form>
   </div>

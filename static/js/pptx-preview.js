@@ -379,7 +379,7 @@
       var h = Math.round(S * slideH / slideW);
       return '<div class="mb-6">' +
         '<p class="font-mono font-bold text-xs uppercase text-gray-400 mb-1">Slide ' + num + '</p>' +
-        '<div class="border-2 border-[#0A0A0A] shadow-brutal bg-white relative overflow-hidden" style="width:100%;max-width:' + S + 'px;height:' + h + 'px">' +
+        '<div class="border border-[#E5E7EB] shadow-brutal bg-white relative overflow-hidden" style="width:100%;max-width:' + S + 'px;height:' + h + 'px">' +
         inner +
         '</div></div>';
     });

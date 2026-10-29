@@ -8,8 +8,8 @@
       <p class="text-sm text-gray-500 mt-0.5">Devices that can unlock your vault.</p>
     </div>
     <button onclick="openAddDeviceModal()"
-      class="font-mono font-bold text-xs tracking-wider bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 sm:w-auto w-full">
-      <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      class="font-mono font-bold text-xs tracking-wider bg-blindbit-accent text-white border-2 border-[#E5E7EB] px-5 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 sm:w-auto w-full">
+      <svg class="w-4 h-4 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add Device
     </button>
   </div>
@@ -17,21 +17,21 @@
   {% if devices %}
   <div class="grid gap-4">
     {% for device in devices %}
-    <div class="bg-white border-2 border-blindbit-black shadow-brutal p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-[#F8F8F5] transition-colors">
+    <div class="bg-white border-2 border-[#E5E7EB] shadow-brutal p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-[#F3F4F6] transition-colors">
       <div class="flex items-center gap-5 min-w-0">
-        <div class="w-14 h-14 bg-blindbit-black flex items-center justify-center shrink-0">
+        <div class="w-14 h-14 bg-[#F3F4F6] flex items-center justify-center shrink-0">
           {% if "Android" in device.name or "iOS" in device.name or "iPhone" in device.name or "iPad" in device.name or "Phone" in device.name %}
-          <svg class="w-7 h-7 stroke-blindbit-accent stroke-2 fill-none" viewBox="0 0 24 24">
+          <svg class="w-7 h-7 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24">
             <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
             <line x1="12" y1="18" x2="12" y2="18"/>
           </svg>
           {% elif "iPad" in device.name or "Tablet" in device.name %}
-          <svg class="w-7 h-7 stroke-blindbit-accent stroke-2 fill-none" viewBox="0 0 24 24">
+          <svg class="w-7 h-7 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24">
             <rect x="4" y="2" width="16" height="20" rx="2" ry="2" transform="rotate(0 12 12)"/>
             <line x1="12" y1="18" x2="12" y2="18"/>
           </svg>
           {% else %}
-          <svg class="w-7 h-7 stroke-blindbit-accent stroke-2 fill-none" viewBox="0 0 24 24">
+          <svg class="w-7 h-7 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
             <line x1="2" y1="21" x2="22" y2="21"/>
             <line x1="12" y1="17" x2="12" y2="21"/>
@@ -43,7 +43,7 @@
           <div class="flex items-center gap-3 flex-wrap">
             <p class="text-lg font-bold truncate">{{ device.name }}</p>
             {% if forloop.first %}
-            <span class="text-[0.6rem] font-mono font-bold tracking-wider bg-blindbit-accent text-blindbit-black px-2 py-0.5 border border-blindbit-black">Current</span>
+            <span class="text-[0.6rem] font-mono font-bold tracking-wider bg-blindbit-accent text-white px-2 py-0.5 border border-[#E5E7EB]">Current</span>
             {% endif %}
           </div>
           <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500 font-mono">
@@ -66,17 +66,17 @@
     {% endfor %}
   </div>
 
-  <div class="mt-6 bg-blindbit-white border-2 border-blindbit-black shadow-brutal p-5">
+  <div class="mt-6 bg-blindbit-white border-2 border-[#E5E7EB] shadow-brutal p-5">
     <div class="flex items-center gap-3">
       <svg class="w-5 h-5 stroke-blindbit-blue stroke-2 fill-none shrink-0" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="8"/></svg>
       <p class="text-sm text-gray-600">Devices are added automatically when you sign in with a passkey on a new browser or machine. Use Add Device to register this browser as a trusted device.</p>
     </div>
   </div>
   {% else %}
-  <div class="bg-white border-2 border-blindbit-black shadow-brutal">
+  <div class="bg-white border-2 border-[#E5E7EB] shadow-brutal">
     <div class="p-14 text-center">
-      <div class="w-20 h-20 mx-auto mb-5 bg-blindbit-black flex items-center justify-center">
-        <svg class="w-10 h-10 stroke-blindbit-accent stroke-2 fill-none" viewBox="0 0 24 24">
+      <div class="w-20 h-20 mx-auto mb-5 bg-[#F3F4F6] flex items-center justify-center">
+        <svg class="w-10 h-10 stroke-[#202124] stroke-2 fill-none" viewBox="0 0 24 24">
           <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
           <line x1="2" y1="21" x2="22" y2="21"/>
           <line x1="12" y1="17" x2="12" y2="21"/>
@@ -85,8 +85,8 @@
       <p class="text-gray-500 text-lg font-semibold mb-1">No trusted devices yet</p>
       <p class="text-sm text-gray-400 mb-6 max-w-md mx-auto leading-relaxed">Creating a passkey during sign-up automatically registers this device. You can also add one now.</p>
       <button onclick="openAddDeviceModal()"
-        class="inline-flex items-center gap-2 font-mono font-bold text-xs tracking-wider no-underline bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-6 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">
-        <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        class="inline-flex items-center gap-2 font-mono font-bold text-xs tracking-wider no-underline bg-blindbit-accent text-white border-2 border-[#E5E7EB] px-6 py-3 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer">
+        <svg class="w-4 h-4 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add Device
       </button>
     </div>
@@ -96,7 +96,7 @@
 
 <!-- Add Device Modal -->
 <div id="add-device-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/40">
-  <div class="bg-white border-2 border-blindbit-black shadow-brutal-lg w-full max-w-sm mx-4 p-6">
+  <div class="bg-white border-2 border-[#E5E7EB] shadow-brutal-lg w-full max-w-sm mx-4 p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="font-bold text-lg">Add Trusted Device</h2>
       <button onclick="closeAddDeviceModal()" class="bg-transparent border-0 cursor-pointer text-gray-400 hover:text-blindbit-black text-xl leading-none">&times;</button>
@@ -106,9 +106,9 @@
     <div id="add-step-passphrase">
       <p class="text-sm text-gray-600 mb-4">Enter your vault passphrase to authorize a new device.</p>
       <input type="password" id="add-device-passphrase" placeholder="Enter your passphrase"
-        class="w-full border-2 border-blindbit-black p-3 text-sm font-mono outline-none focus:ring-2 focus:ring-blindbit-accent mb-4" />
+        class="w-full border-2 border-[#E5E7EB] p-3 text-sm font-mono outline-none focus:ring-2 focus:ring-blindbit-accent mb-4" />
       <button onclick="verifyPassphraseForDevice()" id="add-passphrase-btn"
-        class="w-full font-mono font-bold text-xs bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">
+        class="w-full font-mono font-bold text-xs bg-blindbit-accent text-white border-2 border-[#E5E7EB] py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">
         Verify Passphrase
       </button>
       <p id="add-passphrase-error" class="mt-3 text-red-600 text-sm hidden"></p>
@@ -118,8 +118,8 @@
     <div id="add-step-passkey" class="hidden">
       <p class="text-sm text-gray-600 mb-4">Create a passkey for this device.</p>
       <button onclick="createDevicePasskey()" id="add-passkey-btn"
-        class="w-full font-mono font-bold text-xs bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer flex items-center justify-center gap-2">
-        <svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+        class="w-full font-mono font-bold text-xs bg-blindbit-accent text-white border-2 border-[#E5E7EB] py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer flex items-center justify-center gap-2">
+        <svg class="w-4 h-4 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
         Create Passkey
       </button>
       <p id="add-passkey-error" class="mt-3 text-red-600 text-sm hidden"></p>
@@ -134,7 +134,7 @@
         <p class="font-bold text-lg mb-1">Device Added</p>
         <p class="text-sm text-gray-500 mb-4">Your new device is now trusted.</p>
         <button onclick="window.location.reload()"
-          class="font-mono font-bold text-xs bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black px-6 py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">
+          class="font-mono font-bold text-xs bg-blindbit-accent text-white border-2 border-[#E5E7EB] px-6 py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">
           Done
         </button>
       </div>
@@ -144,22 +144,22 @@
 
 <!-- OTP Modal -->
 <div id="otp-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/40">
-  <div class="bg-white border-2 border-blindbit-black shadow-brutal-lg w-full max-w-sm mx-4 p-6">
+  <div class="bg-white border-2 border-[#E5E7EB] shadow-brutal-lg w-full max-w-sm mx-4 p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="font-bold text-lg">Verify Removal</h2>
       <button onclick="closeOTPModal()" class="bg-transparent border-0 cursor-pointer text-gray-400 hover:text-blindbit-black text-xl leading-none">&times;</button>
     </div>
     <div id="otp-step-send">
       <p class="text-sm text-gray-600 mb-4">A one-time code will be sent to <strong>{{ user.email }}</strong>.</p>
-      <button onclick="sendOTP()" id="otp-send-btn" class="w-full font-mono font-bold text-xs bg-blindbit-accent text-blindbit-black border-2 border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">Send Code</button>
+      <button onclick="sendOTP()" id="otp-send-btn" class="w-full font-mono font-bold text-xs bg-blindbit-accent text-white border-2 border-[#E5E7EB] py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">Send Code</button>
       <p id="otp-send-error" class="mt-3 text-red-600 text-sm hidden"></p>
     </div>
     <div id="otp-step-verify" class="hidden">
       <p class="text-sm text-gray-600 mb-4">Enter the code sent to <strong>{{ user.email }}</strong>.</p>
       <input type="text" id="otp-input" maxlength="6"
-        class="w-full border-2 border-blindbit-black p-3 text-center text-lg font-mono font-bold tracking-[0.5em] outline-none focus:ring-2 focus:ring-blindbit-accent mb-4"
+        class="w-full border-2 border-[#E5E7EB] p-3 text-center text-lg font-mono font-bold tracking-[0.5em] outline-none focus:ring-2 focus:ring-blindbit-accent mb-4"
         placeholder="000000" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" />
-      <button onclick="verifyOTP()" id="otp-verify-btn" class="w-full font-mono font-bold text-xs bg-red-500 text-white border-2 border-blindbit-black py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">Remove Device</button>
+      <button onclick="verifyOTP()" id="otp-verify-btn" class="w-full font-mono font-bold text-xs bg-red-500 text-white border-2 border-[#E5E7EB] py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">Remove Device</button>
       <p id="otp-verify-error" class="mt-3 text-red-600 text-sm hidden"></p>
     </div>
   </div>
@@ -313,7 +313,7 @@ async function createDevicePasskey() {
     err.textContent = e.message;
     err.classList.remove('hidden');
     btn.disabled = false;
-    btn.innerHTML = '<svg class="w-4 h-4 stroke-[#0A0A0A] stroke-2 fill-none" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg> Create Passkey';
+    btn.innerHTML = '<svg class="w-4 h-4 stroke-white stroke-2 fill-none" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg> Create Passkey';
   }
 }
 
