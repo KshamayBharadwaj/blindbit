@@ -1,4 +1,5 @@
 import os
+import urllib.parse
 from pathlib import Path
 
 import dj_database_url
@@ -90,13 +91,32 @@ WSGI_APPLICATION = 'blindbit.wsgi.application'
 # Database: Supabase / PostgreSQL when DATABASE_URL is set, SQLite fallback for local dev
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
-    DATABASES = {
-        'default': dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=True,
-        )
-    }
+    try:
+        DATABASES = {
+            'default': dj_database_url.parse(
+                DATABASE_URL,
+                conn_max_age=600,
+                ssl_require=True,
+            )
+        }
+    except Exception:
+        # Fallback: Auto-sanitize unencoded characters and literal brackets in password
+        parsed = None
+        if '://' in DATABASE_URL and '@' in DATABASE_URL:
+            scheme, rest = DATABASE_URL.split('://', 1)
+            userinfo, hostinfo = rest.rsplit('@', 1)
+            if ':' in userinfo:
+                user, password = userinfo.split(':', 1)
+                # Strip literal surrounding brackets if pasted as [mypassword]
+                if password.startswith('[') and password.endswith(']'):
+                    password = password[1:-1]
+                encoded_pass = urllib.parse.quote(urllib.parse.unquote(password), safe='')
+                fixed_url = f'{scheme}://{user}:{encoded_pass}@{hostinfo}'
+                parsed = dj_database_url.parse(fixed_url, conn_max_age=600, ssl_require=True)
+        if parsed:
+            DATABASES = {'default': parsed}
+        else:
+            raise
 else:
     DATABASES = {
         'default': {
