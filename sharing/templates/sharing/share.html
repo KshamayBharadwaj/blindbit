@@ -186,7 +186,7 @@ form.addEventListener('submit', async (e) => {
 
     const resp = await fetch('{% url "sharing:create_share" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': blindBitCsrfToken() },
       body: JSON.stringify({
         file_id: '{{ file.id }}',
         recipient: selectedRecipient.username,
@@ -204,7 +204,7 @@ form.addEventListener('submit', async (e) => {
       shareBtn.textContent = 'Try Again';
     }
   } catch (err) {
-    showError(err.message || 'Failed to create share');
+    showError(blindBitErrorText(err, 'Could not create the share. Check your connection and try again.'));
     shareBtn.disabled = false;
     shareBtn.textContent = 'Try Again';
   }

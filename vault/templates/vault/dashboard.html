@@ -497,11 +497,11 @@ newFolderCreateBtn.addEventListener('click', async function() {
     fd.append('name', name);
     fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
     var resp = await fetch('{% url "vault:create_folder" %}', { method: 'POST', body: fd });
-    var data = await resp.json();
+    var data = await resp.json().catch(function() { return {}; });
     if (data.status !== 'ok') throw new Error(data.error || 'Could not create folder');
     window.location.reload();
   } catch (err) {
-    alert(err.message);
+    alert(blindBitErrorText(err, 'Could not create folder. Check your connection and try again.'));
     newFolderCreateBtn.disabled = false;
     newFolderCreateBtn.textContent = 'Create Folder';
   }
@@ -567,11 +567,11 @@ renameFolderSaveBtn.addEventListener('click', async function() {
     fd.append('name', name);
     fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
     var resp = await fetch(renameFolderUrl, { method: 'POST', body: fd });
-    var data = await resp.json();
+    var data = await resp.json().catch(function() { return {}; });
     if (data.status !== 'ok') throw new Error(data.error || 'Could not rename folder');
     window.location.reload();
   } catch (err) {
-    alert(err.message);
+    alert(blindBitErrorText(err, 'Could not rename folder. Check your connection and try again.'));
     renameFolderSaveBtn.disabled = false;
     renameFolderSaveBtn.textContent = 'Rename';
   }
@@ -1046,7 +1046,7 @@ if (bulkMoveBtn) bulkMoveBtn.addEventListener('click', function(e) {
 
       var resp = await fetch('{% url "accounts:keys_setup" %}', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': blindBitCsrfToken() },
         body: JSON.stringify(payload),
       });
       var data = await resp.json();
@@ -1069,7 +1069,7 @@ if (bulkMoveBtn) bulkMoveBtn.addEventListener('click', function(e) {
             var newWrapped = await BlindBitCrypto.wrapKey(masterKey, fileKey);
             var rwResp = await fetch('/vault/api/files/' + rows[i].dataset.fileId + '/rewrap-key/', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': blindBitCsrfToken() },
               body: JSON.stringify({ wrapped_file_key: newWrapped }),
             });
             var rwData = await rwResp.json();
@@ -1085,7 +1085,7 @@ if (bulkMoveBtn) bulkMoveBtn.addEventListener('click', function(e) {
       }
       window.location.reload();
     } catch (err) {
-      alert(err.message || 'Vault setup failed. Please try again.');
+      alert(blindBitErrorText(err, 'Vault setup failed. Check your connection and try again.'));
       finishBtn.disabled = false;
       finishBtn.textContent = 'Finish Vault Setup';
     }
@@ -1357,7 +1357,7 @@ uploadForm.addEventListener('submit', async function(e) {
       item.status = 'error';
       item.error = err.message;
       renderUploadQueue();
-      showUploadError(item.file.name + ': ' + err.message);
+      showUploadError(item.file.name + ': ' + blindBitErrorText(err, 'Upload failed. Check your connection and retry.'));
     }
   }
 

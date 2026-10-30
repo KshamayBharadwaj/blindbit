@@ -30,6 +30,7 @@ class Device(models.Model):
     name = models.CharField(max_length=200)
     credential_id = models.TextField(blank=True, help_text="WebAuthn credential ID (base64url)")
     public_key = models.TextField(blank=True, help_text="WebAuthn credential public key (base64url)")
+    rp_id = models.TextField(blank=True, help_text="RP ID (host) the passkey was created under; empty = unknown")
     prf_enabled = models.BooleanField(default=False)
     wrapped_master_key = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

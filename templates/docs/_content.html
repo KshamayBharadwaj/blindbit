@@ -176,14 +176,14 @@
 
   <h3>Viewing Shared Files</h3>
   <p>
-    Files shared with you appear in the <strong>Shared With You</strong> section on your dashboard and in the sidebar's <strong>Shared</strong> page. Click <strong>Open</strong> to decrypt and download them (requires the full ECDH key chain — coming soon).
+    Files shared with you appear in the <strong>Shared With You</strong> section on your dashboard and in the sidebar's <strong>Shared</strong> page. Click <strong>Open</strong> to decrypt and download them — your browser unwraps the file key with your X25519 private key, so the vault has to be unlocked first.
   </p>
 
   <h3>Revoking a Share</h3>
   <ol>
     <li>Go to the file's details page</li>
     <li>Click <strong>Revoke</strong> next to the recipient's name</li>
-    <li>Confirm — the file will be re-encrypted with a new key and the recipient loses access</li>
+    <li>Confirm — the recipient loses access immediately. Their copy of the file key is no longer served, so new downloads fail</li>
   </ol>
 
   <div class="callout callout-info">
@@ -386,7 +386,7 @@
       <span class="faq-icon" aria-hidden="true">+</span>
     </button>
     <div class="faq-answer"><div class="faq-answer-inner">
-      <p>Yes. Revoking generates a new file key, re-encrypts the file, and re-wraps the key for you. The revoked recipient's wrapped key becomes unusable.</p>
+      <p>Yes. Revoking stops serving that recipient's wrapped file key right away, so they can no longer open or download the file. It does not re-encrypt anything — the file itself keeps its key. To make an already-shared copy unreadable for everyone, delete the shares and upload the file again under a new key.</p>
     </div></div>
   </div>
 </section>

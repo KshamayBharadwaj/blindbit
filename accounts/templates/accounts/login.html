@@ -253,11 +253,32 @@ function getDeviceName() {
 
 function b642ab(b64) {
   b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
   return Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); });
 }
 
 function ab2b64(ab) {
   return btoa(String.fromCharCode.apply(null, new Uint8Array(ab)));
+}
+
+// The server reads every binary field as base64url, so send base64url rather
+// than relying on '+' and '/' surviving a trip through the session or logs.
+function ab2b64url(ab) {
+  return ab2b64(ab).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Django rotates the CSRF token inside login()/logout(), so a token baked into
+// this HTML at render time stops working as soon as any tab signs in or out
+// (or the page comes back from the browser's forward/cache) and every WebAuthn
+// POST then fails with a 403 the page reports as a connection error.
+function csrfToken() {
+  var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+  if (match) return decodeURIComponent(match[1]);
+  return '{{ csrf_token }}';
+}
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() };
 }
 
 function hex2ab(hexStr) {
@@ -268,11 +289,9 @@ function hex2ab(hexStr) {
 // salt via the PRF extension; that key unwraps the master key with no
 // passphrase and nothing persisted on the device.
 function b64url(bytes) {
-  return ab2b64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return ab2b64url(bytes);
 }
 function b64url2ab(s) {
-  s = s.replace(/-/g, '+').replace(/_/g, '/');
-  while (s.length % 4) s += '=';
   return b642ab(s);
 }
 async function derivePrfWrappingKey(salt, prfOutput) {
@@ -325,7 +344,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   try {
     var beginResp = await fetch('{% url "accounts:login_begin" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: authHeaders(),
       body: JSON.stringify({ username }),
     });
     var beginData = await beginResp.json();
@@ -345,11 +364,12 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       });
 
       // PRF: ask the authenticator to evaluate the stored salt so the master
-      // key can be restored from the passkey itself.
+      // key can be restored from the passkey itself. The wrapped key comes
+      // back with the assertion because it is per credential.
       var prfRequest = null;
-      if (beginData.prf_enabled && beginData.prf_salt && beginData.wrapped_master_key_prf) {
+      if (beginData.prf_enabled && beginData.prf_salt) {
         try {
-          prfRequest = { salt: hex2ab(beginData.prf_salt), wrapped: beginData.wrapped_master_key_prf };
+          prfRequest = { salt: hex2ab(beginData.prf_salt) };
           beginData.extensions = { prf: { eval: { first: b64url(prfRequest.salt) } } };
         } catch (e) { prfRequest = null; }
       }
@@ -361,6 +381,9 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         var getMsg = 'passkey authentication cancelled or failed. try the passphrase tab.';
         if (getErr && getErr.name === 'NotAllowedError') {
           getMsg = 'no matching passkey on this device, or the prompt timed out. use the browser profile where this passkey was created.';
+          if (beginData.credentials_on_other_hosts) {
+            getMsg = 'your passkeys were created on a different address (localhost and 127.0.0.1 are separate passkey realms). open the app at the address you used to create the passkey.';
+          }
         } else if (getErr && getErr.name === 'InvalidStateError') {
           getMsg = 'this passkey does not match your account.';
         }
@@ -374,32 +397,32 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       var assertResp = assertion.response;
       var credPayload = {
         id: assertion.id,
-        raw_id: ab2b64(assertion.rawId),
+        raw_id: ab2b64url(assertion.rawId),
         response: {
-          client_data_json: ab2b64(assertResp.clientDataJSON),
-          authenticator_data: ab2b64(assertResp.authenticatorData),
-          signature: ab2b64(assertResp.signature),
-          user_handle: assertResp.userHandle ? ab2b64(assertResp.userHandle) : null,
+          client_data_json: ab2b64url(assertResp.clientDataJSON),
+          authenticator_data: ab2b64url(assertResp.authenticatorData),
+          signature: ab2b64url(assertResp.signature),
+          user_handle: assertResp.userHandle ? ab2b64url(assertResp.userHandle) : null,
         },
       };
 
       try {
         var completeResp = await fetch('{% url "accounts:login_complete" %}', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-          body: JSON.stringify({ credential: credPayload }),
+          headers: authHeaders(),
+          body: JSON.stringify({ credential: credPayload, ceremony: beginData.ceremony }),
         });
         var completeData = null;
         try { completeData = await completeResp.json(); } catch (parseErr) {}
 
         if (completeData && completeData.status === 'ok') {
-          if (prfRequest) {
+          if (prfRequest && completeData.wrapped_master_key) {
             try {
               const prfResult = assertion.getClientExtensionResults();
               if (prfResult && prfResult.prf && prfResult.prf.results && prfResult.prf.results.first) {
                 const prfOutput = b64url2ab(prfResult.prf.results.first);
                 const prfWrappingKey = await derivePrfWrappingKey(prfRequest.salt, prfOutput);
-                const mk = await BlindBitCrypto.unwrapKey(prfWrappingKey, prfRequest.wrapped);
+                const mk = await BlindBitCrypto.unwrapKey(prfWrappingKey, completeData.wrapped_master_key);
                 if (mk) {
                   window.BlindBitMasterKey = mk;
                   const rawMk = await crypto.subtle.exportKey('raw', mk);
@@ -412,7 +435,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
                   }
                 }
               }
-            } catch (e) { /* PRF failed — unlock modal covers passphrase accounts */ }
+            } catch (e) { /* PRF did not produce a key — the unlock prompt covers it */ }
           }
           window.location.href = completeData.is_onboarded ? '{% url "vault:dashboard" %}' : '{% url "accounts:register" %}';
           return;
@@ -426,7 +449,9 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         errorEl.classList.remove('hidden');
       }
     } else {
-      errorEl.textContent = 'no passkey found for this account. use the passphrase tab or recovery.';
+      errorEl.textContent = beginData.credentials_on_other_hosts
+        ? 'your passkeys belong to a different address (localhost and 127.0.0.1 are separate passkey realms). use the passphrase tab, or add a passkey here from the devices page.'
+        : 'no passkey found for this account. use the passphrase tab or recovery.';
       errorEl.classList.remove('hidden');
     }
   } catch (err) {
@@ -459,7 +484,7 @@ document.getElementById('send-otp-btn').addEventListener('click', async () => {
   try {
     var beginResp = await fetch('{% url "accounts:login_begin" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: authHeaders(),
       body: JSON.stringify({ username }),
     });
     var beginData = await beginResp.json();
@@ -499,7 +524,7 @@ document.getElementById('send-otp-btn').addEventListener('click', async () => {
 
     var otpResp = await fetch('{% url "accounts:login_send_otp" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: authHeaders(),
       body: JSON.stringify({ username }),
     });
     var otpData = await otpResp.json();
@@ -535,7 +560,7 @@ document.getElementById('passphrase-submit-btn').addEventListener('click', async
   try {
     const resp = await fetch('{% url "accounts:login_passphrase" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: authHeaders(),
       body: JSON.stringify({
         username: passphraseState.username,
         passphrase_verifier: passphraseState.verifier,

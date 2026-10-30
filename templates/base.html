@@ -193,7 +193,7 @@
         </div>
         <div>
           <h3 class="font-bold text-lg leading-tight">Unlock your keys</h3>
-          <p class="text-sm text-gray-500 mt-1">Enter your passphrase to unlock your encryption keys for this session.</p>
+          <p id="unlock-hint" class="text-sm text-gray-500 mt-1">Enter your passphrase to unlock your encryption keys for this session.</p>
         </div>
       </div>
       <form id="unlock-form" class="space-y-3" autocomplete="off">
@@ -298,6 +298,20 @@ function getCookie(name) {
   return null;
 }
 
+// login() and logout() rotate Django's CSRF token, so the value baked into a
+// page rendered before that moment is rejected — the live cookie is the one the
+// server still accepts.
+function blindBitCsrfToken() {
+  return getCookie('csrftoken') || '{{ csrf_token }}';
+}
+
+// Only copy we wrote ourselves is safe to show. A TypeError thrown by fetch
+// ("Failed to fetch") or a SyntaxError from parsing a non-JSON reply would
+// otherwise land in an alert the user has to interpret.
+function blindBitErrorText(err, fallback) {
+  return (err && err.name === 'Error' && err.message) ? err.message : fallback;
+}
+
 // Re-give access to a previously revoked share: unwrap the file key with the
 // owner's master key, re-wrap it for the recipient via fresh ECDH, and
 // re-activate the share server-side.
@@ -347,7 +361,7 @@ async function blindBitReshare(btn) {
     if (result.status === 'ok') { window.location.reload(); return; }
     throw new Error(result.error || 'Re-share failed');
   } catch (err) {
-    alert(err.message || 'Failed to re-share');
+    alert(blindBitErrorText(err, 'Could not re-share. Check your connection and try again.'));
     if (btn) { btn.disabled = false; btn.textContent = 'Re-share'; }
   }
 }
@@ -399,6 +413,7 @@ var blindBitUnlockPrompt = null;
   var form = document.getElementById('unlock-form');
   var input = document.getElementById('unlock-passphrase');
   var errorEl = document.getElementById('unlock-error');
+  var hintEl = document.getElementById('unlock-hint');
   var submitBtn = document.getElementById('unlock-submit');
   var cancelBtn = document.getElementById('unlock-cancel');
   var backdrop = document.getElementById('unlock-backdrop');
@@ -408,12 +423,50 @@ var blindBitUnlockPrompt = null;
     blindBitUnlockPrompt = null;
     if (resolve) resolve(value);
   }
+  var initialHint = hintEl.textContent;
   function hide() {
     modal.classList.add('hidden');
     input.value = '';
+    errorEl.textContent = '';
     errorEl.classList.add('hidden');
+    form.classList.remove('hidden');
+    hintEl.textContent = initialHint;
     submitBtn.disabled = false;
     submitBtn.textContent = 'Unlock';
+  }
+
+  // A passkey-only account has no passphrase to type, so the form is a dead
+  // end there. Say what actually unlocks the vault instead of failing on
+  // submit.
+  function showNoPassphrase(data) {
+    form.classList.add('hidden');
+    hintEl.textContent = data && data.passkey_unlocks_vault
+      ? 'this vault unlocks with your passkey, not a passphrase.'
+      : 'this vault has no passphrase — it can only be restored with your recovery code.';
+    errorEl.textContent = '';
+    errorEl.classList.remove('hidden');
+    var link = document.createElement('a');
+    link.className = 'text-blindbit-accent font-bold underline';
+    if (data && data.passkey_unlocks_vault) {
+      link.href = '{% url "accounts:logout" %}';
+      link.textContent = data.credentials_on_other_hosts
+        ? 'sign out and use the passkey on the address it was created on'
+        : 'sign out and sign in with the passkey';
+    } else {
+      link.href = '{% url "accounts:recovery" %}';
+      link.textContent = 'restore with the recovery code';
+    }
+    errorEl.appendChild(link);
+  }
+
+  function probeUnlockMode() {
+    fetch('{% url "accounts:login_begin" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ username: '{{ user.username|escapejs }}' }),
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data && !data.has_passphrase && !modal.classList.contains('hidden')) showNoPassphrase(data);
+    }).catch(function() { /* leave the passphrase form as-is */ });
   }
 
   form.addEventListener('submit', async function(e) {
@@ -436,7 +489,8 @@ var blindBitUnlockPrompt = null;
       var data = await resp.json();
       if (data.error) throw new Error(data.error);
       if (!data.has_passphrase || !data.wrapped_master_key_passphrase || !data.passphrase_salt) {
-        throw new Error('No passphrase configured for this account.');
+        showNoPassphrase(data);
+        return;
       }
       var salt = new Uint8Array(data.passphrase_salt.match(/.{2}/g).map(function(b) { return parseInt(b, 16); }));
       var wrappingKey = await BlindBitCrypto.deriveKeyFromPassphrase(passphrase, salt);
@@ -459,6 +513,7 @@ var blindBitUnlockPrompt = null;
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && !modal.classList.contains('hidden')) { hide(); resolvePrompt(null); }
   });
+  window.blindBitProbeUnlockMode = probeUnlockMode;
 })();
 
 // Resolves with the master key (CryptoKey), or null if the user cancels.
@@ -482,6 +537,7 @@ async function blindBitEnsureMasterKey() {
   var modal = document.getElementById('unlock-modal');
   modal.classList.remove('hidden');
   document.getElementById('unlock-passphrase').focus();
+  if (window.blindBitProbeUnlockMode) window.blindBitProbeUnlockMode();
   return new Promise(function(resolve) { blindBitUnlockPrompt = resolve; });
 }
 

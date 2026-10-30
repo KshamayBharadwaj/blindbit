@@ -59,7 +59,7 @@
         {% else %}
           <form method="post" action="{% url 'sharing:revoke_share' share.id %}">
             {% csrf_token %}
-            <button type="submit" onclick="return BlindBitConfirm(this.form, 'Are you sure you want to revoke this access for {{ share.recipient.username|escapejs }}? This will require re-encrypting the file.', { title: 'Revoke Access?', confirmLabel: 'Revoke' })" class="font-mono font-bold text-xs text-red-500 bg-transparent border-0 cursor-pointer px-3 py-1.5 hover:text-red-700">Revoke</button>
+            <button type="submit" onclick="return BlindBitConfirm(this.form, 'Revoke access for {{ share.recipient.username|escapejs }}? They will not be able to open or download this file any more.', { title: 'Revoke Access?', confirmLabel: 'Revoke' })" class="font-mono font-bold text-xs text-red-500 bg-transparent border-0 cursor-pointer px-3 py-1.5 hover:text-red-700">Revoke</button>
           </form>
         {% endif %}
       </div>

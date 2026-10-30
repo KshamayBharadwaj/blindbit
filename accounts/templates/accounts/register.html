@@ -270,11 +270,25 @@ function getDeviceName() {
 
 function b642ab(b64) {
   b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
   return Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); });
 }
 
 function ab2b64(ab) {
   return btoa(String.fromCharCode.apply(null, new Uint8Array(ab)));
+}
+
+// Django rotates the CSRF token inside login()/logout(), so a token baked into
+// this HTML stops working the moment any tab signs in or out; the live cookie
+// value is the one the server accepts.
+function csrfToken() {
+  var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+  if (match) return decodeURIComponent(match[1]);
+  return '{{ csrf_token }}';
+}
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() };
 }
 
 function hex(salt) {
@@ -357,7 +371,7 @@ createPasskeyBtn.addEventListener('click', async () => {
   try {
     const resp = await fetch('{% url "accounts:registration_options" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: authHeaders(),
       body: JSON.stringify({ username, email }),
     });
     const data = await resp.json();
@@ -371,7 +385,12 @@ createPasskeyBtn.addEventListener('click', async () => {
     // master key and future passkey logins restore it without a passphrase.
     regState.prfSalt = crypto.getRandomValues(new Uint8Array(32));
     regState.prfOutput = null;
-    data.extensions = { prf: { enable: true, eval: { first: b64url(regState.prfSalt) } } };
+    regState.ceremony = data.ceremony;
+    data.extensions = { prf: { eval: { first: b64url(regState.prfSalt) } } };
+    // An authenticator only releases PRF output for a verified user, so
+    // verification has to be required or the extension is silently skipped.
+    data.authenticatorSelection = data.authenticatorSelection || {};
+    data.authenticatorSelection.userVerification = 'required';
 
     const credential = await navigator.credentials.create({ publicKey: data });
     const attResp = credential.response;
@@ -385,10 +404,10 @@ createPasskeyBtn.addEventListener('click', async () => {
 
     regState.credential = {
       id: credential.id,
-      raw_id: ab2b64(credential.rawId),
+      raw_id: b64url(credential.rawId),
       response: {
-        client_data_json: ab2b64(attResp.clientDataJSON),
-        attestation_object: ab2b64(attResp.attestationObject),
+        client_data_json: b64url(attResp.clientDataJSON),
+        attestation_object: b64url(attResp.attestationObject),
       },
     };
     regState.username = username;
@@ -487,21 +506,25 @@ registerForm.addEventListener('submit', async (e) => {
 
     const resp = await fetch('{% url "accounts:register_begin" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-      body: JSON.stringify(payload),
+      headers: authHeaders(),
+      body: JSON.stringify(Object.assign({ ceremony: regState.ceremony }, payload)),
     });
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.error || 'Registration failed');
 
     await fetch('{% url "accounts:confirm_recovery" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: authHeaders(),
       body: JSON.stringify({ wrapped_master_key_recovery: payload.wrapped_master_key_recovery }),
     });
 
     registerCard.classList.add('hidden');
     recoveryCard.classList.remove('hidden');
     recoveryCodeDisplay.textContent = recoveryCode;
+    if (!regState.prfOutput && !passphrase) {
+      // Without PRF or a passphrase nothing can unlock the vault except this code.
+      showError('heads up: this passkey cannot unlock the vault on its own. keep the recovery code above safe, or add a passphrase from the devices page.');
+    }
     document.getElementById('recovery-code-display').scrollIntoView({ behavior: 'smooth' });
   } catch (err) {
     showError(err.message || 'Registration failed. Please try again.');

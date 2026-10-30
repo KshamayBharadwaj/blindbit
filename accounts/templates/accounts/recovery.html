@@ -67,7 +67,7 @@ document.getElementById('recovery-form').addEventListener('submit', async (e) =>
 
     var resp = await fetch('{% url "accounts:login_begin" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': blindBitCsrfToken() },
       body: JSON.stringify({ username }),
     });
     var data = await resp.json();
@@ -85,18 +85,21 @@ document.getElementById('recovery-form').addEventListener('submit', async (e) =>
       var assertion = await navigator.credentials.get({ publicKey: data });
       var assertResp = assertion.response;
       var credPayload = {
-        id: assertion.id, raw_id: ab2b64(assertion.rawId),
+        id: assertion.id, raw_id: ab2b64url(assertion.rawId),
         response: {
-          client_data_json: ab2b64(assertResp.clientDataJSON),
-          authenticator_data: ab2b64(assertResp.authenticatorData),
-          signature: ab2b64(assertResp.signature),
-          user_handle: assertResp.userHandle ? ab2b64(assertResp.userHandle) : null,
+          client_data_json: ab2b64url(assertResp.clientDataJSON),
+          authenticator_data: ab2b64url(assertResp.authenticatorData),
+          signature: ab2b64url(assertResp.signature),
+          user_handle: assertResp.userHandle ? ab2b64url(assertResp.userHandle) : null,
         },
       };
       var completeResp = await fetch('{% url "accounts:login_complete" %}', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-        body: JSON.stringify({ credential: credPayload }),
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': blindBitCsrfToken() },
+        // The challenge behind this ceremony is single-use and identified by
+        // the token login_begin issued, so it has to travel back with the
+        // assertion or the verification has nothing to check against.
+        body: JSON.stringify({ credential: credPayload, ceremony: data.ceremony }),
       });
       var completeData = await completeResp.json();
       if (completeData.status === 'ok') {
@@ -123,10 +126,16 @@ document.getElementById('recovery-form').addEventListener('submit', async (e) =>
 
 function b642ab(b64) {
   b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
   return Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); });
 }
 function ab2b64(ab) {
   return btoa(String.fromCharCode.apply(null, new Uint8Array(ab)));
+}
+// WebAuthn payloads are base64url; '+' and '/' in a credential id would be
+// stored as-is and stop matching on the next sign-in.
+function ab2b64url(ab) {
+  return ab2b64(ab).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 </script>
 {% endblock %}

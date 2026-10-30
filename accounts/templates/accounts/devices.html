@@ -51,9 +51,14 @@
             <span class="text-gray-300">|</span>
             <span>Last used {{ device.last_used|date:"M j, Y g:i A" }}</span>
             <span class="text-gray-300">|</span>
-            <span class="{% if device.prf_enabled %}text-green-600{% else %}text-amber-600{% endif %} font-bold">
-              {% if device.prf_enabled %}Passkey Only{% else %}Passkey + Passphrase{% endif %}
+            <span class="{% if device.can_unlock %}text-green-600{% else %}text-amber-600{% endif %} font-bold">
+              {% if device.can_unlock %}Passkey Only{% else %}Passkey + Passphrase{% endif %}
             </span>
+            {% if device.rp_id and device.rp_id != rp_id %}
+            <span class="text-amber-600 font-bold" title="Passkeys only work on the host they were created on.">
+              created on {{ device.rp_id }} — not usable on {{ rp_id }}
+            </span>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -65,6 +70,18 @@
     </div>
     {% endfor %}
   </div>
+
+  {% if foreign_devices %}
+  <div class="mt-6 bg-[#FFFBEB] border-2 border-[#E5E7EB] shadow-brutal p-5">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 stroke-amber-600 stroke-2 fill-none shrink-0 mt-0.5" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
+      <div>
+        <p class="text-sm text-gray-700 font-bold mb-1">some of your passkeys belong to another address</p>
+        <p class="text-sm text-gray-600">a passkey is bound to the host it was created on, and {{ rp_id }} is a different one from {% for d in foreign_devices %}{{ d.rp_id }}{% if not forloop.last %}, {% endif %}{% endfor %}. sign in from that address to use them, or create a passkey here with the button above.</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   <div class="mt-6 bg-blindbit-white border-2 border-[#E5E7EB] shadow-brutal p-5">
     <div class="flex items-center gap-3">
@@ -132,7 +149,7 @@
           <svg class="w-8 h-8 stroke-green-600 stroke-2 fill-none" viewBox="0 0 24 24"><polyline points="9,12 11,14 15,10"/><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <p class="font-bold text-lg mb-1">Device Added</p>
-        <p class="text-sm text-gray-500 mb-4">Your new device is now trusted.</p>
+        <p id="add-done-note" class="text-sm text-gray-500 mb-4">Your new device is now trusted.</p>
         <button onclick="window.location.reload()"
           class="font-mono font-bold text-xs bg-blindbit-accent text-white border-2 border-[#E5E7EB] px-6 py-3 shadow-brutal hover:shadow-brutal-lg transition-all cursor-pointer">
           Done
@@ -187,11 +204,52 @@ function getDeviceName() {
 
 function b642ab(b64) {
   b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
   return Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); });
 }
 
 function ab2b64(ab) {
   return btoa(String.fromCharCode.apply(null, new Uint8Array(ab)));
+}
+
+// base64url is what WebAuthn payloads are stored as; plain base64 with '+' and
+// '/' in the credential id breaks the next sign-in's credential lookup.
+function b64url(bytes) {
+  return ab2b64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function hex(bytes) {
+  return Array.from(bytes).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+function hexToBytes(s) {
+  return new Uint8Array(s.match(/.{2}/g).map(function(b) { return parseInt(b, 16); }));
+}
+
+// Django rotates the CSRF token inside login()/logout(), so a token baked into
+// this HTML stops working the moment any tab signs in or out; the live cookie
+// value is the one the server accepts.
+function csrfToken() {
+  var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+  if (match) return decodeURIComponent(match[1]);
+  return '{{ csrf_token }}';
+}
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() };
+}
+
+// PRF output is turned into a wrapping key with the account-wide salt, exactly
+// as at registration, so the same passkey restores the master key at sign-in.
+async function derivePrfWrappingKey(salt, prfOutput) {
+  var base = await crypto.subtle.importKey('raw', prfOutput, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: salt, info: new TextEncoder().encode('BlindBit PRF wrapping key v1') },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['wrapKey', 'unwrapKey']
+  );
 }
 
 async function sha256Hex(str) {
@@ -203,70 +261,98 @@ async function sha256Hex(str) {
 // ── Add Device ──
 
 let addDeviceMasterKey = null;
+let addDeviceCeremony = null;
+let addDevicePrfSalt = null;
+
+function showAddStep(step) {
+  ['add-step-passphrase', 'add-step-passkey', 'add-step-done'].forEach(function(id) {
+    document.getElementById(id).classList.toggle('hidden', id !== step);
+  });
+}
 
 function openAddDeviceModal() {
   addDeviceMasterKey = null;
-  document.getElementById('add-step-passphrase').classList.remove('hidden');
-  document.getElementById('add-step-passkey').classList.add('hidden');
-  document.getElementById('add-step-done').classList.add('hidden');
+  addDeviceCeremony = null;
+  addDevicePrfSalt = null;
   document.getElementById('add-device-passphrase').value = '';
   document.getElementById('add-passphrase-error').classList.add('hidden');
   document.getElementById('add-passkey-error').classList.add('hidden');
   document.getElementById('add-passphrase-btn').disabled = false;
   document.getElementById('add-passphrase-btn').textContent = 'Verify Passphrase';
   document.getElementById('add-device-modal').classList.remove('hidden');
+  restoreKeyThenShowStep();
+}
+
+// The master key is imported asynchronously on page load, so give that a
+// chance to land before deciding the vault needs a passphrase again.
+async function restoreKeyThenShowStep() {
+  if (!window.BlindBitMasterKey && window.blindBitKeyRestorePromise) {
+    try { await window.blindBitKeyRestorePromise; } catch (e) { /* not unlocked */ }
+  }
+  if (window.BlindBitMasterKey) {
+    addDeviceMasterKey = window.BlindBitMasterKey;
+    startAddDevice();
+    return;
+  }
+  showAddStep('add-step-passphrase');
 }
 
 function closeAddDeviceModal() {
   document.getElementById('add-device-modal').classList.add('hidden');
   addDeviceMasterKey = null;
+  addDeviceCeremony = null;
+  addDevicePrfSalt = null;
 }
 
-async function verifyPassphraseForDevice() {
-  const passphrase = document.getElementById('add-device-passphrase').value;
+async function startAddDevice() {
   const err = document.getElementById('add-passphrase-error');
   const btn = document.getElementById('add-passphrase-btn');
   err.classList.add('hidden');
-
-  if (!passphrase) {
-    err.textContent = 'Please enter your passphrase.';
-    err.classList.remove('hidden');
-    return;
-  }
-
   btn.disabled = true;
-  btn.textContent = 'Verifying...';
+  btn.textContent = 'Preparing...';
 
   try {
     const resp = await fetch('{% url "accounts:add_device_options" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: authHeaders(),
     });
     const data = await resp.json();
     if (data.error) { throw new Error(data.error); }
 
-    var wrappedMk = data.wrapped_master_key_passphrase || '';
-    var saltHex = data.passphrase_salt || '';
-
-    if (!wrappedMk || !saltHex) {
-      throw new Error('No passphrase configured for this account.');
-    }
-
-    var salt = new Uint8Array(saltHex.match(/.{2}/g).map(function(b) { return parseInt(b, 16); }));
-    var wrappingKey = await BlindBitCrypto.deriveKeyFromPassphrase(passphrase, salt);
-    var mk = await BlindBitCrypto.unwrapKey(wrappingKey, wrappedMk);
-    addDeviceMasterKey = mk;
-
+    addDeviceCeremony = data.ceremony;
     window.__addDeviceOptions = data;
 
-    document.getElementById('add-step-passphrase').classList.add('hidden');
-    document.getElementById('add-step-passkey').classList.remove('hidden');
+    if (!addDeviceMasterKey) {
+      var wrappedMk = data.wrapped_master_key_passphrase || '';
+      var saltHex = data.passphrase_salt || '';
+      if (!wrappedMk || !saltHex) {
+        throw new Error('this account has no passphrase. unlock the vault first, then add the device.');
+      }
+      var wrappingKey = await BlindBitCrypto.deriveKeyFromPassphrase(
+        document.getElementById('add-device-passphrase').value,
+        hexToBytes(saltHex)
+      );
+      addDeviceMasterKey = await BlindBitCrypto.unwrapKey(wrappingKey, wrappedMk);
+    }
+
+    showAddStep('add-step-passkey');
   } catch (e) {
     err.textContent = e.message;
     err.classList.remove('hidden');
     btn.disabled = false;
     btn.textContent = 'Verify Passphrase';
   }
+}
+
+async function verifyPassphraseForDevice() {
+  const passphrase = document.getElementById('add-device-passphrase').value;
+  const err = document.getElementById('add-passphrase-error');
+  if (!passphrase) {
+    err.textContent = 'please enter your passphrase.';
+    err.classList.remove('hidden');
+    return;
+  }
+  await startAddDevice();
 }
 
 async function createDevicePasskey() {
@@ -279,36 +365,70 @@ async function createDevicePasskey() {
   try {
     var options = window.__addDeviceOptions;
     if (!options) throw new Error('No registration options. Please start over.');
+    if (!addDeviceMasterKey) throw new Error('The vault is locked. Unlock it before adding a device.');
 
-    if (options.challenge) options.challenge = b642ab(options.challenge);
-    if (options.user && options.user.id) options.user.id = b642ab(options.user.id);
+    var publicKey = Object.assign({}, options);
+    delete publicKey.ceremony;
+    delete publicKey.wrapped_master_key_passphrase;
+    delete publicKey.passphrase_salt;
+    delete publicKey.prf_salt;
+    if (publicKey.challenge) publicKey.challenge = b642ab(publicKey.challenge);
+    if (publicKey.user && publicKey.user.id) publicKey.user.id = b642ab(publicKey.user.id);
 
-    var credential = await navigator.credentials.create({ publicKey: options });
+    // Enrol this passkey's own PRF output so it can unlock the vault alone.
+    // login_begin only knows the account-wide salt, so reuse it when present
+    // and only mint a new one for an account that has never had PRF.
+    var saltHex = options.prf_salt || '';
+    addDevicePrfSalt = saltHex ? hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(32));
+    publicKey.extensions = { prf: { eval: { first: b64url(addDevicePrfSalt) } } };
+    publicKey.authenticatorSelection = publicKey.authenticatorSelection || {};
+    publicKey.authenticatorSelection.userVerification = 'required';
+
+    var credential = await navigator.credentials.create({ publicKey: publicKey });
     var attResp = credential.response;
+
+    var prfOutput = null;
+    try {
+      var ext = credential.getClientExtensionResults();
+      if (ext && ext.prf && ext.prf.results && ext.prf.results.first) {
+        prfOutput = b642ab(ext.prf.results.first);
+      }
+    } catch (e) { /* authenticator has no PRF — the device keeps needing the passphrase */ }
+
+    var payload = {
+      ceremony: addDeviceCeremony,
+      credential: {
+        id: credential.id,
+        raw_id: b64url(credential.rawId),
+        response: {
+          client_data_json: b64url(attResp.clientDataJSON),
+          attestation_object: b64url(attResp.attestationObject),
+        },
+      },
+      device_name: getDeviceName(),
+      wrapped_master_key: '',
+      prf_salt: '',
+    };
+
+    if (prfOutput) {
+      var prfWrappingKey = await derivePrfWrappingKey(addDevicePrfSalt, prfOutput);
+      payload.wrapped_master_key = await BlindBitCrypto.wrapKey(prfWrappingKey, addDeviceMasterKey);
+      payload.prf_salt = hex(addDevicePrfSalt);
+    }
 
     var completeResp = await fetch('{% url "accounts:add_device_complete" %}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-      body: JSON.stringify({
-        credential: {
-          id: credential.id,
-          raw_id: ab2b64(credential.rawId),
-          response: {
-            client_data_json: ab2b64(attResp.clientDataJSON),
-            attestation_object: ab2b64(attResp.attestationObject),
-          },
-        },
-        device_name: getDeviceName(),
-        prf_enabled: false,
-        wrapped_master_key: '',
-      }),
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
     });
     var completeData = await completeResp.json();
 
     if (completeData.error) { throw new Error(completeData.error); }
 
-    document.getElementById('add-step-passkey').classList.add('hidden');
-    document.getElementById('add-step-done').classList.remove('hidden');
+    document.getElementById('add-done-note').textContent = prfOutput
+      ? 'this passkey unlocks your vault on its own.'
+      : "this authenticator can't unlock the vault alone — it will still ask for your passphrase.";
+    showAddStep('add-step-done');
   } catch (e) {
     err.textContent = e.message;
     err.classList.remove('hidden');
@@ -350,7 +470,7 @@ async function sendOTP() {
   try {
     const resp = await fetch('/accounts/api/device/' + pendingDeviceId + '/send-otp/', {
       method: 'POST',
-      headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: { 'X-CSRFToken': csrfToken() },
     });
     const data = await resp.json();
     if (data.status === 'otp_sent') {
@@ -383,7 +503,7 @@ async function verifyOTP() {
   try {
     const resp = await fetch('/accounts/api/device/' + pendingDeviceId + '/verify-remove/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      headers: authHeaders(),
       body: JSON.stringify({ otp: otp }),
     });
     const data = await resp.json();

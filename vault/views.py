@@ -2,6 +2,7 @@ import json
 import base64
 import secrets
 from datetime import timedelta
+from uuid import UUID
 from django.shortcuts import render, get_object_or_404, redirect
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -11,6 +12,54 @@ from django.utils import timezone
 from django.db.models import F
 from .models import EncryptedFile, VaultFolder, UploadSession, FileChunk
 from sharing.models import FileShare
+
+
+BAD_ID = 'That reference is no longer valid. Reload the page and try again.'
+BAD_BODY = 'Malformed request body.'
+
+
+def get_json_body(request):
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _uuid(value):
+    """Parse an id that came from a request body. Django only validates ids in
+    URLs, so a stale page or a hand-built request can put anything here."""
+    try:
+        return str(UUID(str(value)))
+    except (ValueError, TypeError):
+        return None
+
+
+def _int(value, default=None):
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _bad_request(message=BAD_BODY):
+    return JsonResponse({'error': message}, status=400)
+
+
+def _folder_for(request, folder_id):
+    """Resolve a body-supplied folder id into (folder, error). ``folder_id``
+    empty means "root", so an absent folder is not an error."""
+    if not folder_id:
+        return None, None
+    clean = _uuid(folder_id)
+    folder = VaultFolder.objects.filter(id=clean, owner=request.user).first() if clean else None
+    if folder is None:
+        return None, JsonResponse({'error': BAD_ID}, status=400)
+    return folder, None
+
+
+def _file_ids(request, field='file_ids'):
+    return [i for i in (_uuid(v) for v in request.POST.getlist(field)) if i]
 
 @login_required
 def dashboard(request, folder_id=None):
@@ -62,8 +111,9 @@ def upload_view(request):
     folder_id = request.GET.get('folder')
     current_folder = None
     if folder_id:
-        current_folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
-        if current_folder.is_favorites:
+        clean = _uuid(folder_id)
+        current_folder = VaultFolder.objects.filter(id=clean, owner=request.user).first() if clean else None
+        if not current_folder or current_folder.is_favorites:
             return redirect('vault:dashboard')
     return render(request, 'vault/upload.html', {
         'current_folder': current_folder,
@@ -106,14 +156,12 @@ def rename_folder(request, folder_id):
 @require_POST
 def move_file(request, file_id):
     file = get_object_or_404(EncryptedFile, id=file_id, owner=request.user)
-    folder_id = request.POST.get('folder_id')
-    if folder_id:
-        folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
-        if folder.is_favorites:
-            return JsonResponse({'error': 'Starred files stay where they are — use the star button instead'}, status=400)
-        file.folder = folder
-    else:
-        file.folder = None
+    folder, error = _folder_for(request, request.POST.get('folder_id'))
+    if error:
+        return error
+    if folder and folder.is_favorites:
+        return JsonResponse({'error': 'Starred files stay where they are — use the star button instead'}, status=400)
+    file.folder = folder
     file.save(update_fields=['folder', 'updated_at'])
     return JsonResponse({'status': 'ok'})
 
@@ -131,7 +179,7 @@ def toggle_favorite(request, file_id):
 @login_required
 @require_POST
 def bulk_favorite(request):
-    ids = request.POST.getlist('file_ids')
+    ids = _file_ids(request)
     if not ids:
         return JsonResponse({'error': 'No files selected'}, status=400)
     files = EncryptedFile.objects.filter(owner=request.user, id__in=ids)
@@ -144,22 +192,21 @@ def bulk_favorite(request):
 @login_required
 @require_POST
 def bulk_move(request):
-    ids = request.POST.getlist('file_ids')
+    ids = _file_ids(request)
     if not ids:
         return JsonResponse({'error': 'No files selected'}, status=400)
-    folder_id = request.POST.get('folder_id')
-    folder = None
-    if folder_id:
-        folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
-        if folder.is_favorites:
-            return JsonResponse({'error': 'Starred files stay where they are — use the star button instead'}, status=400)
+    folder, error = _folder_for(request, request.POST.get('folder_id'))
+    if error:
+        return error
+    if folder and folder.is_favorites:
+        return JsonResponse({'error': 'Starred files stay where they are — use the star button instead'}, status=400)
     EncryptedFile.objects.filter(owner=request.user, id__in=ids).update(folder=folder)
     return JsonResponse({'status': 'ok', 'count': len(ids)})
 
 @login_required
 @require_POST
 def bulk_delete(request):
-    ids = request.POST.getlist('file_ids')
+    ids = _file_ids(request)
     if not ids:
         return JsonResponse({'error': 'No files selected'}, status=400)
     qs = EncryptedFile.objects.filter(owner=request.user, id__in=ids)
@@ -182,13 +229,13 @@ def upload_file(request):
     if ciphertext.size > max_bytes:
         return JsonResponse({'error': f'File exceeds {max_bytes // 1048576}MB limit'}, status=400)
 
-    folder = None
-    folder_id = request.POST.get('folder_id')
-    if folder_id:
-        folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
-        if folder.is_favorites:
-            return JsonResponse({'error': 'You cannot upload directly into Favorites — star a file instead'}, status=400)
+    folder, error = _folder_for(request, request.POST.get('folder_id'))
+    if error:
+        return error
+    if folder and folder.is_favorites:
+        return JsonResponse({'error': 'You cannot upload directly into Favorites — star a file instead'}, status=400)
 
+    original_size = _int(request.POST.get('original_size', 0), 0)
     encrypted_file = EncryptedFile.objects.create(
         owner=request.user,
         folder=folder,
@@ -198,7 +245,7 @@ def upload_file(request):
         encrypted_metadata=request.POST.get('encrypted_metadata', ''),
         nonce=request.POST.get('nonce', ''),
         auth_tag=request.POST.get('auth_tag', ''),
-        original_size=int(request.POST.get('original_size', 0)),
+        original_size=original_size,
         mime_type=request.POST.get('mime_type', 'application/octet-stream'),
     )
     return JsonResponse({
@@ -211,21 +258,24 @@ def upload_file(request):
 def start_upload(request):
     """Begin a chunked upload session. Returns a secret token used as the
     credential for all subsequent chunk requests."""
-    data = json.loads(request.body)
-    original_size = int(data.get('original_size') or 0)
+    data = get_json_body(request)
+    if data is None:
+        return _bad_request()
+    original_size = _int(data.get('original_size') or 0)
+    if original_size is None:
+        return _bad_request('File size must be a number.')
     max_bytes = getattr(settings, 'MAX_UPLOAD_SIZE_MB', 500) * 1048576
     if original_size <= 0 or original_size > max_bytes:
         return JsonResponse({'error': f'File size must be between 1 byte and {max_bytes // 1048576}MB'}, status=400)
 
-    folder = None
-    folder_id = data.get('folder_id')
-    if folder_id:
-        folder = get_object_or_404(VaultFolder, id=folder_id, owner=request.user)
-        if folder.is_favorites:
-            return JsonResponse({'error': 'You cannot upload directly into Favorites — star a file instead'}, status=400)
+    folder, error = _folder_for(request, data.get('folder_id'))
+    if error:
+        return error
+    if folder and folder.is_favorites:
+        return JsonResponse({'error': 'You cannot upload directly into Favorites — star a file instead'}, status=400)
 
-    total_chunks = max(1, int(data.get('total_chunks') or 1))
-    chunk_size = int(data.get('chunk_size') or 8388608)
+    total_chunks = max(1, _int(data.get('total_chunks') or 1, 1))
+    chunk_size = max(1, _int(data.get('chunk_size') or 8388608, 8388608))
     ttl_hours = getattr(settings, 'UPLOAD_SESSION_TTL_HOURS', 24)
     session = UploadSession.objects.create(
         owner=request.user,
@@ -292,7 +342,9 @@ def complete_upload(request):
     """Assemble all chunks into an EncryptedFile row. The final ciphertext is
     the concatenation of the per-chunk ciphertexts; auth_tag carries the JSON
     segment map (iv/tag/size) that the client uses to decrypt chunk by chunk."""
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return _bad_request()
     token = data.get('token', '')
     session = _get_live_session(request, token)
     if not session:
@@ -328,7 +380,9 @@ def complete_upload(request):
 @require_POST
 def cancel_upload(request):
     """Abandon a session and drop its chunks."""
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return _bad_request()
     UploadSession.objects.filter(token=data.get('token', ''), owner=request.user).delete()
     return JsonResponse({'status': 'ok'})
 
@@ -443,9 +497,11 @@ def rewrap_file_key(request, file_id):
     """Re-wrap a file's key under a new master key. The file ciphertext and
     any existing shares are untouched — the file key itself never changes."""
     file = get_object_or_404(EncryptedFile, id=file_id, owner=request.user)
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return _bad_request()
     new_wrapped = data.get('wrapped_file_key', '')
-    if not new_wrapped:
+    if not isinstance(new_wrapped, str) or not new_wrapped:
         return JsonResponse({'error': 'Missing wrapped_file_key'}, status=400)
     file.wrapped_file_key = new_wrapped
     file.save(update_fields=['wrapped_file_key'])

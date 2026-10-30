@@ -274,7 +274,7 @@ form.addEventListener('submit', async (e) => {
       item.status = 'error';
       item.error = err.message;
       renderQueue();
-      showError(item.file.name + ': ' + err.message);
+      showError(item.file.name + ': ' + blindBitErrorText(err, 'Upload failed. Check your connection and retry.'));
     }
   }
 

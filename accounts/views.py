@@ -2,6 +2,8 @@ import json
 import hashlib
 import secrets
 import time
+from functools import wraps
+from urllib.parse import urlparse
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -33,37 +35,82 @@ from webauthn.helpers import bytes_to_base64url, base64url_to_bytes
 RP_ID = settings.WEBAUTHN_RP_ID
 RP_NAME = settings.WEBAUTHN_RP_NAME
 
+LOOPBACK_ALIASES = {'127.0.0.1', '::1', '[::1]', '0.0.0.0'}
+CEREMONY_TTL_SECONDS = 300
+MAX_ACTIVE_CEREMONIES = 10
+
+
+def _host_and_port(request):
+    """Split ``request.get_host()`` into a lowercase host and its port."""
+    netloc = request.get_host().strip().lower()
+    if netloc.startswith('['):
+        host, _, rest = netloc[1:].partition(']')
+        return host, rest.lstrip(':')
+    if ':' in netloc:
+        host, port = netloc.split(':', 1)
+        return host, port
+    return netloc, ''
+
 
 def get_rp_id(request):
-    """Return RP ID that matches the current request host.
+    """The RP ID for this request.
 
-    The browser enforces that rp.id must be a registrable suffix of the
-    current domain (e.g. spec SecurityError "Invalid domain"). The previous
-    code used a static settings.WEBAUTHN_RP_ID='localhost', so visiting via
-    http://127.0.0.1:8000 or any LAN/production host immediately failed with
-    "Invalid domain" during navigator.credentials.create().
-
-    This helper derives the RP ID from the request host for dev flexibility
-    while still respecting an explicit production config (e.g.
-    BLINDBIT_RP_ID=example.com allows subdomains like app.example.com).
+    A browser only accepts an rp.id that is a registrable suffix of the host
+    serving the page, and a passkey is cryptographically bound to the rp.id it
+    was created under, so the ID follows the request host in development
+    (localhost, 127.0.0.1, LAN IPs) and is pinned to BLINDBIT_RP_ID once a real
+    domain is configured.
     """
-    try:
-        host = request.get_host().split(":")[0].strip().lower()
-    except Exception:
-        host = ""
-    configured = (settings.WEBAUTHN_RP_ID or "").strip().lower()
-    # Respect explicit production RP ID if request is that domain or a subdomain
-    if configured and configured != "localhost":
-        if host == configured or host.endswith("." + configured):
+    host, _ = _host_and_port(request)
+    configured = (settings.WEBAUTHN_RP_ID or '').strip().lower()
+    if configured and configured != 'localhost':
+        if host == configured or host.endswith('.' + configured):
             return configured
-    # Empty / localhost config → use the actual host (covers localhost, 127.0.0.1, LAN IPs, etc.)
     if host:
         return host
-    return configured or "localhost"
+    return configured or 'localhost'
 
 
-def get_rp_origin(request):
-    return request.META.get('HTTP_ORIGIN') or f"{request.scheme}://{request.get_host()}"
+def canonical_host_redirect(request):
+    """Move a loopback-IP visit onto ``localhost``.
+
+    ``localhost`` and ``127.0.0.1`` are different RP IDs, so a passkey created
+    under one is unreachable under the other and sign-in appears to work only
+    on whichever address the user happened to use. Loopback is development
+    only, so collapse it to a single passkey realm.
+    """
+    if (settings.WEBAUTHN_RP_ID or 'localhost').strip().lower() != 'localhost':
+        return None
+    host, port = _host_and_port(request)
+    if host == 'localhost' or host not in LOOPBACK_ALIASES:
+        return None
+    netloc = f'localhost:{port}' if port else 'localhost'
+    return redirect(f'{request.scheme}://{netloc}{request.get_full_path()}')
+
+
+def get_rp_origins(request):
+    """Every origin a response for this request could legitimately come from.
+
+    clientDataJSON carries the browser's own origin, which does not always
+    match the URL Django sees once a TLS terminator rewrites the scheme or drops
+    a default port, so verification accepts the set instead of one guess.
+    """
+    host = request.get_host()
+    origins = [f'{request.scheme}://{host}']
+
+    def add(candidate):
+        candidate = (candidate or '').strip().rstrip('/')
+        if candidate and candidate not in origins:
+            origins.append(candidate)
+
+    add(request.META.get('HTTP_ORIGIN'))
+    forwarded_proto = request.META.get('HTTP_X_FORWARDED_PROTO', '').split(',')[0].strip()
+    if forwarded_proto:
+        add(f'{forwarded_proto}://{host}')
+    configured = (settings.WEBAUTHN_RP_ORIGIN or '').strip()
+    if configured and urlparse(configured).netloc.lower() == host.lower():
+        add(configured)
+    return origins
 
 
 def get_json_body(request):
@@ -74,19 +121,203 @@ def get_json_body(request):
     return data if isinstance(data, dict) else None
 
 
+def store_ceremony(request, kind, challenge, username=''):
+    """Remember an in-flight challenge, returning the token that claims it.
+
+    Challenges used to occupy one session slot each, so a second tab, the
+    passphrase tab, or the dashboard's unlock prompt (all of which call
+    login_begin) overwrote the challenge of a ceremony the user was still
+    finishing in the authenticator prompt.
+    """
+    now = time.time()
+    store = {key: value for key, value in (request.session.get('ceremonies') or {}).items()
+             if value.get('exp', 0) > now}
+
+    token = secrets.token_urlsafe(16)
+    store[token] = {
+        'kind': kind,
+        'challenge': bytes_to_base64url(challenge),
+        'username': username,
+        'exp': now + CEREMONY_TTL_SECONDS,
+    }
+    while len(store) > MAX_ACTIVE_CEREMONIES:
+        oldest = min(store, key=lambda key: store[key]['exp'])
+        del store[oldest]
+
+    request.session['ceremonies'] = store
+    request.session.modified = True
+    return token
+
+
+def consume_ceremony(request, kind, token):
+    """Return ``(username, challenge)`` for a token, or None if it is stale.
+
+    Tokens are single-use, so one ceremony can never consume another's
+    challenge.
+    """
+    store = request.session.get('ceremonies') or {}
+    entry = store.pop(token or '', None)
+    request.session['ceremonies'] = store
+    request.session.modified = True
+
+    if not entry or entry.get('kind') != kind or entry.get('exp', 0) < time.time():
+        return None
+    return entry.get('username', ''), base64url_to_bytes(entry['challenge'])
+
+
+STALE_CEREMONY = {'error': 'that passkey request expired or was already used. start the sign-in again.'}
+
+
+def json_login_required(view):
+    """``@login_required`` for the JSON endpoints.
+
+    A signed-out browser fetch() would otherwise receive the HTML login page and
+    report it as a passkey failure, so an ended session is answered as one.
+    """
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'your session ended. sign in again, then retry.'}, status=401)
+        return view(request, *args, **kwargs)
+    return wrapper
+
+
+def _b64_field(data, *path):
+    missing = '.'.join(path)
+    node = data
+    for key in path:
+        if not isinstance(node, dict) or key not in node:
+            raise ValueError(f'missing credential field "{missing}"')
+        node = node[key]
+    if not isinstance(node, str):
+        raise ValueError(f'credential field "{missing}" must be base64')
+    try:
+        return base64url_to_bytes(node)
+    except Exception as exc:
+        raise ValueError(f'credential field "{missing}" is not valid base64') from exc
+
+
+def _registration_credential(cred_data):
+    if not isinstance(cred_data, dict) or not isinstance(cred_data.get('id'), str):
+        raise ValueError('credential.id is missing')
+    return RegistrationCredential(
+        id=cred_data['id'],
+        raw_id=_b64_field(cred_data, 'raw_id'),
+        response=AuthenticatorAttestationResponse(
+            client_data_json=_b64_field(cred_data, 'response', 'client_data_json'),
+            attestation_object=_b64_field(cred_data, 'response', 'attestation_object'),
+        ),
+        type='public-key',
+    )
+
+
+def _authentication_credential(cred_data):
+    if not isinstance(cred_data, dict) or not isinstance(cred_data.get('id'), str):
+        raise ValueError('credential.id is missing')
+    user_handle = None
+    if isinstance(cred_data.get('response'), dict) and cred_data['response'].get('user_handle'):
+        user_handle = _b64_field(cred_data, 'response', 'user_handle')
+    return AuthenticationCredential(
+        id=cred_data['id'],
+        raw_id=_b64_field(cred_data, 'raw_id'),
+        response=AuthenticatorAssertionResponse(
+            client_data_json=_b64_field(cred_data, 'response', 'client_data_json'),
+            authenticator_data=_b64_field(cred_data, 'response', 'authenticator_data'),
+            signature=_b64_field(cred_data, 'response', 'signature'),
+            user_handle=user_handle,
+        ),
+        type='public-key',
+    )
+
+
+def _descriptor(credential_id):
+    """A WebAuthn descriptor for a stored credential ID, or None.
+
+    One unreadable row would otherwise raise inside login_begin and break every
+    sign-in attempt for the account.
+    """
+    try:
+        return PublicKeyCredentialDescriptor(id=base64url_to_bytes(credential_id))
+    except Exception:
+        return None
+
+
+def _credentials_matching(user, rp_id):
+    """This user's usable passkeys, and how many belong to another host.
+
+    Offering a credential whose rp.id does not match the page only produces an
+    opaque NotAllowedError in the browser, so the mismatch is reported instead.
+    """
+    usable, elsewhere = [], 0
+    for device in user.devices.all():
+        if not device.credential_id or not device.public_key:
+            continue
+        if device.rp_id and device.rp_id != rp_id:
+            elsewhere += 1
+            continue
+        usable.append(device)
+    return usable, elsewhere
+
+
+def _device_for_credential(user, cred_data):
+    """The device row a signing-in credential belongs to, or None.
+
+    Credential IDs are opaque bytes with more than one legal base64 spelling,
+    and older rows were saved straight from the browser's string, so the decoded
+    values are compared instead of the encodings. Matching on the raw string
+    silently failed for those rows and the passkey looked unregistered.
+    """
+    raw = cred_data.get('raw_id') or cred_data.get('id')
+    try:
+        wanted = base64url_to_bytes(raw)
+    except Exception:
+        return None
+    for device in user.devices.exclude(public_key=''):
+        try:
+            if base64url_to_bytes(device.credential_id) == wanted:
+                return device
+        except Exception:
+            continue
+    return None
+
+
+def _device_unlocks_vault(user, device, passkey_count):
+    """Whether this passkey alone can restore the master key.
+
+    PRF output is per credential, so a wrapped master key only fits the passkey
+    that produced it. The account-level column predates that and is only safe to
+    use when the account has exactly one passkey — otherwise a newer one would
+    unwrap garbage and leave the vault locked after a successful sign-in.
+    """
+    if not user.prf_salt:
+        return False
+    if device.wrapped_master_key:
+        return True
+    return bool(user.wrapped_master_key_prf) and passkey_count == 1
+
+
 def register_view(request):
+    forwarded = canonical_host_redirect(request)
+    if forwarded:
+        return forwarded
     if request.user.is_authenticated:
         return redirect('vault:dashboard')
     return render(request, 'accounts/register.html')
 
 
 def login_view(request):
+    forwarded = canonical_host_redirect(request)
+    if forwarded:
+        return forwarded
     if request.user.is_authenticated:
         return redirect('vault:dashboard')
     return render(request, 'accounts/login.html')
 
 
 def recovery_view(request):
+    forwarded = canonical_host_redirect(request)
+    if forwarded:
+        return forwarded
     return render(request, 'accounts/recovery.html')
 
 
@@ -117,10 +348,11 @@ def registration_options(request):
         ),
     )
 
-    request.session['reg_challenge'] = bytes_to_base64url(options.challenge)
-    request.session.modified = True
+    ceremony = store_ceremony(request, 'register', options.challenge, username)
 
-    return JsonResponse(json.loads(options_to_json(options)))
+    payload = json.loads(options_to_json(options))
+    payload['ceremony'] = ceremony
+    return JsonResponse(payload)
 
 
 @require_POST
@@ -136,32 +368,30 @@ def register_complete(request):
     if User.objects.filter(email=email).exists():
         return JsonResponse({'error': 'Email already exists'}, status=400)
 
-    expected_challenge_b64 = request.session.pop('reg_challenge', None)
-    if not expected_challenge_b64:
-        return JsonResponse({'error': 'No registration challenge. Please start over.'}, status=400)
-    expected_challenge = base64url_to_bytes(expected_challenge_b64)
+    consumed = consume_ceremony(request, 'register', data.get('ceremony'))
+    if not consumed:
+        return JsonResponse(STALE_CEREMONY, status=400)
+    ceremony_username, expected_challenge = consumed
+    if ceremony_username != username:
+        return JsonResponse({'error': 'the username changed since the passkey was created. start over.'}, status=400)
 
     cred_data = data.get('credential')
     if not cred_data:
         return JsonResponse({'error': 'Missing credential data'}, status=400)
 
     try:
-        credential = RegistrationCredential(
-            id=cred_data['id'],
-            raw_id=base64url_to_bytes(cred_data['raw_id']),
-            response=AuthenticatorAttestationResponse(
-                client_data_json=base64url_to_bytes(cred_data['response']['client_data_json']),
-                attestation_object=base64url_to_bytes(cred_data['response']['attestation_object']),
-            ),
-            type='public-key',
-        )
-
+        credential = _registration_credential(cred_data)
         verification = verify_registration_response(
             credential=credential,
             expected_challenge=expected_challenge,
             expected_rp_id=get_rp_id(request),
-            expected_origin=get_rp_origin(request),
+            expected_origin=get_rp_origins(request),
+            # Only demanded when the client claims PRF material, since an
+            # authenticator that cannot verify must still be able to enrol.
+            require_user_verification=bool(data.get('wrapped_master_key_prf')),
         )
+    except ValueError as e:
+        return JsonResponse({'error': f'Malformed passkey response: {str(e)}'}, status=400)
     except Exception as e:
         return JsonResponse({'error': f'WebAuthn verification failed: {str(e)}'}, status=400)
 
@@ -199,9 +429,13 @@ def register_complete(request):
     Device.objects.create(
         user=user,
         name=device_name or 'Unknown device',
-        credential_id=cred_data['id'],
+        # Store the ID the verifier confirmed rather than the browser's string,
+        # so every later credential lookup compares the same bytes.
+        credential_id=bytes_to_base64url(verification.credential_id),
         public_key=bytes_to_base64url(verification.credential_public_key),
+        rp_id=get_rp_id(request),
         prf_enabled=data.get('prf_enabled', False),
+        wrapped_master_key=wrapped_mk_prf or '',
     )
 
     login(request, user)
@@ -223,54 +457,65 @@ def login_begin(request):
     except User.DoesNotExist:
         return JsonResponse({'error': 'User not found'}, status=400)
 
-    # Only include credentials that have a stored public_key (can be verified)
-    allow_credentials = []
-    for device in user.devices.all():
-        if device.credential_id and device.public_key:
-            allow_credentials.append(PublicKeyCredentialDescriptor(
-                id=base64url_to_bytes(device.credential_id),
-            ))
+    rp_id = get_rp_id(request)
+    usable_devices, credentials_on_other_hosts = _credentials_matching(user, rp_id)
+    allow_credentials = [
+        descriptor for descriptor in
+        (_descriptor(device.credential_id) for device in usable_devices)
+        if descriptor
+    ]
+    passkey_count = user.devices.exclude(public_key='').count()
 
     has_passphrase = user.passphrase_enabled and bool(user.wrapped_master_key_passphrase)
-    has_verified_credentials = len(allow_credentials) > 0
+
+    # A passkey can only restore the master key when the PRF salt survived and
+    # this particular credential has a master key wrapped with its own PRF
+    # output.
+    unlockable = [device for device in usable_devices
+                  if _device_unlocks_vault(user, device, passkey_count)]
+    prf_available = bool(unlockable)
 
     result = {
         'has_passphrase': has_passphrase,
         'is_onboarded': user.is_onboarded,
-        'has_verified_credentials': has_verified_credentials,
+        'has_verified_credentials': bool(allow_credentials),
+        'passkey_unlocks_vault': prf_available,
     }
+
+    if credentials_on_other_hosts and not allow_credentials:
+        result['credentials_on_other_hosts'] = True
 
     if has_passphrase:
         result['wrapped_master_key_passphrase'] = user.wrapped_master_key_passphrase
         result['passphrase_salt'] = user.passphrase_salt
 
-    # PRF (prf-enabled passkey): the client can restore the master key from the
-    # passkey itself, with no passphrase and no stored secrets on the device.
-    if user.prf_salt and user.wrapped_master_key_prf:
+    if prf_available:
         result['prf_enabled'] = True
         result['prf_salt'] = user.prf_salt
-        result['wrapped_master_key_prf'] = user.wrapped_master_key_prf
 
-    if has_verified_credentials:
+    if allow_credentials:
         options = generate_authentication_options(
-            rp_id=get_rp_id(request),
+            rp_id=rp_id,
             allow_credentials=allow_credentials,
-            user_verification=UserVerificationRequirement.PREFERRED,
+            # An authenticator only hands out PRF output for a verified user;
+            # leaving verification "preferred" makes the master key restore fail
+            # silently on whichever passkey happens to skip it. Only insist on
+            # it when every passkey on offer is expected to unlock the vault, so
+            # an account that is merely passing through the login step is never
+            # blocked by an authenticator that cannot verify.
+            user_verification=(UserVerificationRequirement.REQUIRED
+                               if len(unlockable) == len(usable_devices)
+                               else UserVerificationRequirement.PREFERRED),
         )
 
-        request.session['login_challenge'] = bytes_to_base64url(options.challenge)
-        request.session['login_username'] = username
-        request.session.modified = True
+        ceremony = store_ceremony(request, 'login', options.challenge, username)
 
-        options_dict = json.loads(options_to_json(options))
-        options_dict.update(result)
-        return JsonResponse(options_dict)
+        payload = json.loads(options_to_json(options))
+        payload.update(result)
+        payload['ceremony'] = ceremony
+        return JsonResponse(payload)
 
-    # No verified credentials — passphrase only (legacy account)
-    request.session['login_username'] = username
-    request.session['login_legacy_no_pubkey'] = True
-    request.session.modified = True
-
+    # No usable credentials — passphrase or recovery only
     return JsonResponse(result)
 
 
@@ -280,67 +525,55 @@ def login_complete(request):
     if data is None:
         return JsonResponse({'error': 'Invalid request body'}, status=400)
 
-    # Keep challenge/username in the session until verification succeeds so a
-    # failed attempt can be retried without restarting the whole ceremony.
-    username = request.session.get('login_username', '')
-    expected_challenge_b64 = request.session.get('login_challenge')
-
-    if not username or not expected_challenge_b64:
-        return JsonResponse({'error': 'No login session. Please start over.'}, status=400)
+    consumed = consume_ceremony(request, 'login', data.get('ceremony'))
+    if not consumed:
+        return JsonResponse(STALE_CEREMONY, status=400)
+    username, expected_challenge = consumed
 
     try:
         user = User.objects.get(username=username)
     except User.DoesNotExist:
         return JsonResponse({'error': 'User not found'}, status=400)
 
-    expected_challenge = base64url_to_bytes(expected_challenge_b64)
-
     cred_data = data.get('credential')
-    if not cred_data:
+    if not isinstance(cred_data, dict) or not cred_data.get('id'):
         return JsonResponse({'error': 'Missing credential data'}, status=400)
 
-    credential_id = cred_data.get('id', '')
-    try:
-        device = Device.objects.get(user=user, credential_id=credential_id)
-    except Device.DoesNotExist:
-        return JsonResponse({'error': 'Credential not recognized for this user'}, status=400)
+    device = _device_for_credential(user, cred_data)
+    if not device:
+        return JsonResponse({'error': 'this passkey is not registered on the account you are signing into'}, status=400)
 
-    stored_pub_key = device.public_key
-    if not stored_pub_key:
-        return JsonResponse({'error': 'No public key stored for this device. Please re-register.'}, status=400)
+    prf_available = _device_unlocks_vault(user, device, user.devices.exclude(public_key='').count())
 
     try:
-        credential = AuthenticationCredential(
-            id=credential_id,
-            raw_id=base64url_to_bytes(cred_data['raw_id']),
-            response=AuthenticatorAssertionResponse(
-                client_data_json=base64url_to_bytes(cred_data['response']['client_data_json']),
-                authenticator_data=base64url_to_bytes(cred_data['response']['authenticator_data']),
-                signature=base64url_to_bytes(cred_data['response']['signature']),
-                user_handle=base64url_to_bytes(cred_data['response']['user_handle']) if cred_data['response'].get('user_handle') else None,
-            ),
-            type='public-key',
-        )
-
-        verify_authentication_response(
+        credential = _authentication_credential(cred_data)
+        verified = verify_authentication_response(
             credential=credential,
             expected_challenge=expected_challenge,
             expected_rp_id=get_rp_id(request),
-            expected_origin=get_rp_origin(request),
-            credential_public_key=base64url_to_bytes(stored_pub_key),
+            expected_origin=get_rp_origins(request),
+            credential_public_key=base64url_to_bytes(device.public_key),
             credential_current_sign_count=0,
+            require_user_verification=prf_available,
         )
+    except ValueError as e:
+        return JsonResponse({'error': f'Malformed passkey response: {str(e)}'}, status=400)
     except Exception as e:
         return JsonResponse({'error': f'WebAuthn verification failed: {str(e)}'}, status=400)
 
-    request.session.pop('login_username', None)
-    request.session.pop('login_challenge', None)
+    device.save(update_fields=['last_used'])
 
     login(request, user)
     return JsonResponse({
         'status': 'ok',
         'is_onboarded': user.is_onboarded,
-        'wrapped_master_key_prf': user.wrapped_master_key_prf or '',
+        'has_passphrase': bool(user.passphrase_enabled and user.wrapped_master_key_passphrase),
+        'passkey_unlocks_vault': prf_available,
+        # The PRF output is per credential, so the wrapped key has to come from
+        # the device that just signed in, not from the account as a whole.
+        'wrapped_master_key': (device.wrapped_master_key or user.wrapped_master_key_prf) if prf_available else '',
+        'credential_id': device.credential_id,
+        'user_verified': verified.user_verified,
     })
 
 
@@ -444,7 +677,7 @@ def login_passphrase(request):
     })
 
 
-@login_required
+@json_login_required
 @require_POST
 def prf_upgrade_options(request):
     """Return a WebAuthn authentication challenge so the logged-in user can
@@ -452,56 +685,73 @@ def prf_upgrade_options(request):
     future passkey-only logins. No verification happens here — the user is
     already authenticated via session; the assertion is only used client-side
     to obtain the PRF output."""
-    user = request.user
-    allow_credentials = []
-    for device in user.devices.all():
-        if device.credential_id and device.public_key:
-            allow_credentials.append(PublicKeyCredentialDescriptor(
-                id=base64url_to_bytes(device.credential_id),
-            ))
-    if not allow_credentials:
-        return JsonResponse({'error': 'No passkey found for this account'}, status=400)
+    usable_devices, elsewhere = _credentials_matching(request.user, get_rp_id(request))
+    if not usable_devices:
+        detail = ' created on a different host' if elsewhere else ''
+        return JsonResponse({'error': f'no passkey on this account{detail} can be used here'}, status=400)
     options = generate_authentication_options(
         rp_id=get_rp_id(request),
-        allow_credentials=allow_credentials,
-        user_verification=UserVerificationRequirement.PREFERRED,
+        allow_credentials=[descriptor for descriptor in
+                           (_descriptor(device.credential_id) for device in usable_devices)
+                           if descriptor],
+        user_verification=UserVerificationRequirement.REQUIRED,
     )
     return JsonResponse(json.loads(options_to_json(options)))
 
 
-@login_required
+@json_login_required
 @require_POST
 def enable_prf(request):
-    """Save a PRF-wrapped master key for an existing account so future
-    passkey logins restore the key with no passphrase. Server stores opaque
-    ciphertext only (zero-knowledge preserved)."""
+    """Bind a PRF-wrapped master key to one passkey so that passkey unlocks the
+    vault with no passphrase. The server stores opaque ciphertext only (zero-
+    knowledge preserved).
+
+    Each credential produces its own PRF output, so the wrapped key belongs to
+    the device, while the HKDF salt stays account-wide because login_begin is
+    what hands it to the client before the ceremony runs.
+    """
     data = get_json_body(request)
     if data is None:
         return JsonResponse({'error': 'Invalid request body'}, status=400)
-    prf_salt = (data.get('prf_salt') or '').strip()
-    wrapped = (data.get('wrapped_master_key_prf') or '').strip()
+    prf_salt = (data.get('prf_salt') or '').strip().lower()
+    wrapped = (data.get('wrapped_master_key') or data.get('wrapped_master_key_prf') or '').strip()
     credential_id = (data.get('credential_id') or '').strip()
     if not prf_salt or not wrapped:
         return JsonResponse({'error': 'Missing PRF key material'}, status=400)
-    # Basic sanity: hex salt, base64 wrapped blob
-    if len(prf_salt) != 64 or any(c not in '0123456789abcdefABCDEF' for c in prf_salt):
+    if len(prf_salt) != 64 or any(c not in '0123456789abcdef' for c in prf_salt):
         return JsonResponse({'error': 'Invalid PRF salt'}, status=400)
+
     user = request.user
-    user.prf_salt = prf_salt.lower()
-    user.wrapped_master_key_prf = wrapped
-    user.save(update_fields=['prf_salt', 'wrapped_master_key_prf'])
+    if user.prf_salt and user.prf_salt != prf_salt:
+        return JsonResponse({'error': 'this account already uses a different PRF salt'}, status=400)
+
+    device = None
     if credential_id:
-        Device.objects.filter(user=user, credential_id=credential_id).update(prf_enabled=True)
+        device = _device_for_credential(user, {'id': credential_id})
+        if not device:
+            return JsonResponse({'error': 'that passkey is not registered on this account'}, status=400)
+
+    if device:
+        device.wrapped_master_key = wrapped
+        device.prf_enabled = True
+        device.save(update_fields=['wrapped_master_key', 'prf_enabled'])
     else:
-        # Fallback: mark the most recently used device
-        latest = user.devices.order_by('-last_used').first()
+        user.prf_salt = prf_salt
+        user.wrapped_master_key_prf = wrapped
+        user.save(update_fields=['prf_salt', 'wrapped_master_key_prf'])
+        latest = user.devices.filter(public_key__gt='').order_by('-last_used').first()
         if latest:
             latest.prf_enabled = True
             latest.save(update_fields=['prf_enabled'])
-    return JsonResponse({'status': 'ok'})
+
+    if not user.prf_salt:
+        user.prf_salt = prf_salt
+        user.save(update_fields=['prf_salt'])
+
+    return JsonResponse({'status': 'ok', 'credential_id': device.credential_id if device else ''})
 
 
-@login_required
+@json_login_required
 @require_POST
 def add_device_options(request):
     user = request.user
@@ -511,70 +761,95 @@ def add_device_options(request):
         user_id=str(user.id).encode(),
         user_name=user.username,
         user_display_name=user.display_name or user.username,
+        # Stops the same passkey being enrolled twice, which would leave two
+        # rows for one credential id and make sign-in ambiguous.
+        exclude_credentials=[descriptor for descriptor in
+                             (_descriptor(device.credential_id)
+                              for device in user.devices.exclude(credential_id=''))
+                             if descriptor],
         authenticator_selection=AuthenticatorSelectionCriteria(
             resident_key=ResidentKeyRequirement.REQUIRED,
             user_verification=UserVerificationRequirement.REQUIRED,
         ),
     )
-    request.session['add_device_challenge'] = bytes_to_base64url(options.challenge)
-    request.session.modified = True
+    ceremony = store_ceremony(request, 'device', options.challenge, user.username)
 
     result = json.loads(options_to_json(options))
+    result['ceremony'] = ceremony
     result['wrapped_master_key_passphrase'] = user.wrapped_master_key_passphrase or ''
     result['passphrase_salt'] = user.passphrase_salt or ''
+    # Shared account salt: every passkey wraps the master key with its own PRF
+    # output, but the salt stays the same so login_begin has one value to offer.
+    result['prf_salt'] = user.prf_salt or ''
     return JsonResponse(result)
 
 
-@login_required
+@json_login_required
 @require_POST
 def add_device_complete(request):
-    data = json.loads(request.body)
-    challenge_b64 = request.session.pop('add_device_challenge', None)
-    if not challenge_b64:
-        return JsonResponse({'error': 'No registration challenge. Please start over.'}, status=400)
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
 
-    challenge = base64url_to_bytes(challenge_b64)
+    consumed = consume_ceremony(request, 'device', data.get('ceremony'))
+    if not consumed:
+        return JsonResponse(STALE_CEREMONY, status=400)
+    _, challenge = consumed
+
     cred_data = data.get('credential')
     if not cred_data:
         return JsonResponse({'error': 'Missing credential data'}, status=400)
 
+    # login_begin hands out one account-wide salt before it knows which
+    # credential will sign in, so a newly enrolled passkey has to reuse it.
+    wrapped = data.get('wrapped_master_key', '')
+    prf_salt = (data.get('prf_salt') or '').strip().lower()
+    if wrapped:
+        if len(prf_salt) != 64 or any(c not in '0123456789abcdef' for c in prf_salt):
+            return JsonResponse({'error': 'Invalid PRF salt'}, status=400)
+        if request.user.prf_salt and request.user.prf_salt != prf_salt:
+            return JsonResponse({'error': 'this account already uses a different PRF salt'}, status=400)
+
     try:
-        credential = RegistrationCredential(
-            id=cred_data['id'],
-            raw_id=base64url_to_bytes(cred_data['raw_id']),
-            response=AuthenticatorAttestationResponse(
-                client_data_json=base64url_to_bytes(cred_data['response']['client_data_json']),
-                attestation_object=base64url_to_bytes(cred_data['response']['attestation_object']),
-            ),
-            type='public-key',
-        )
+        credential = _registration_credential(cred_data)
         verification = verify_registration_response(
             credential=credential,
             expected_challenge=challenge,
             expected_rp_id=get_rp_id(request),
-            expected_origin=get_rp_origin(request),
+            expected_origin=get_rp_origins(request),
+            require_user_verification=True,
         )
+    except ValueError as e:
+        return JsonResponse({'error': f'Malformed passkey response: {str(e)}'}, status=400)
     except Exception as e:
         return JsonResponse({'error': f'WebAuthn verification failed: {str(e)}'}, status=400)
 
     device = Device.objects.create(
         user=request.user,
         name=data.get('device_name', 'Unknown device'),
-        credential_id=cred_data['id'],
+        credential_id=bytes_to_base64url(verification.credential_id),
         public_key=bytes_to_base64url(verification.credential_public_key),
-        prf_enabled=data.get('prf_enabled', False),
-        wrapped_master_key=data.get('wrapped_master_key', ''),
+        rp_id=get_rp_id(request),
+        prf_enabled=bool(wrapped),
+        wrapped_master_key=wrapped,
     )
+
+    if wrapped and not request.user.prf_salt:
+        request.user.prf_salt = prf_salt
+        request.user.save(update_fields=['prf_salt'])
+
     return JsonResponse({'status': 'ok', 'device_id': str(device.id)})
 
 
-@login_required
+@json_login_required
 @require_POST
 def keys_setup(request):
     """Restore/setup flow for accounts that predate the master-key system.
     Rebuilds the full key chain in the browser and stores it: recovery-wrapped
     master key, optional passphrase-wrapped master key, and X25519 keys."""
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
     user = request.user
 
     wrapped_mk_recovery = data.get('wrapped_master_key_recovery', '')
@@ -600,7 +875,13 @@ def keys_setup(request):
     user.encrypted_x25519_private_key = x25519_enc_priv
     user.recovery_phrase_confirmed = True
     user.is_onboarded = True
+    # This is a brand new master key, so every passkey-wrapped copy of the old
+    # one is now garbage: leaving them in place advertises a passkey unlock
+    # that restores a key nothing decrypts.
+    user.prf_salt = ''
+    user.wrapped_master_key_prf = ''
     user.save()
+    user.devices.update(wrapped_master_key='', prf_enabled=False)
     return JsonResponse({'status': 'ok'})
 
 
@@ -609,11 +890,13 @@ def logout_view(request):
     return redirect('landing')
 
 
-@login_required
+@json_login_required
 @require_http_methods(['GET', 'POST'])
 def my_keys(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
+        data = get_json_body(request)
+        if data is None:
+            return JsonResponse({'error': 'Invalid request body'}, status=400)
         request.user.x25519_public_key = data.get('x25519_public_key', request.user.x25519_public_key)
         request.user.encrypted_x25519_private_key = data.get('encrypted_x25519_private_key', request.user.encrypted_x25519_private_key)
         request.user.save(update_fields=['x25519_public_key', 'encrypted_x25519_private_key'])
@@ -626,11 +909,24 @@ def my_keys(request):
 
 @login_required
 def devices_view(request):
-    devices = request.user.devices.all()
-    return render(request, 'accounts/devices.html', {'devices': devices})
+    forwarded = canonical_host_redirect(request)
+    if forwarded:
+        return forwarded
+    rp_id = get_rp_id(request)
+    devices = list(request.user.devices.all())
+    passkey_count = len([d for d in devices if d.public_key])
+    for device in devices:
+        # Whether this passkey alone restores the vault, so the list can say so
+        # honestly instead of trusting a flag that can predate the wrapped key.
+        device.can_unlock = _device_unlocks_vault(request.user, device, passkey_count)
+    return render(request, 'accounts/devices.html', {
+        'devices': devices,
+        'rp_id': rp_id,
+        'foreign_devices': [d for d in devices if d.rp_id and d.rp_id != rp_id],
+    })
 
 
-@login_required
+@json_login_required
 @require_POST
 def send_remove_otp(request, device_id):
     try:
@@ -662,10 +958,12 @@ def send_remove_otp(request, device_id):
     return JsonResponse({'status': 'otp_sent'})
 
 
-@login_required
+@json_login_required
 @require_POST
 def verify_remove_device(request, device_id):
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
     otp_data = request.session.get('remove_otp')
 
     if not otp_data:
@@ -693,10 +991,12 @@ def verify_remove_device(request, device_id):
         return JsonResponse({'error': 'Device not found'}, status=404)
 
 
-@login_required
+@json_login_required
 @require_POST
 def confirm_recovery(request):
-    data = json.loads(request.body)
+    data = get_json_body(request)
+    if data is None:
+        return JsonResponse({'error': 'Invalid request body'}, status=400)
     wrapped_mk_recovery = data.get('wrapped_master_key_recovery', '')
     request.user.recovery_phrase_confirmed = True
     request.user.is_onboarded = True
