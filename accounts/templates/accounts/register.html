@@ -386,19 +386,32 @@ createPasskeyBtn.addEventListener('click', async () => {
     regState.prfSalt = crypto.getRandomValues(new Uint8Array(32));
     regState.prfOutput = null;
     regState.ceremony = data.ceremony;
-    data.extensions = { prf: { eval: { first: b64url(regState.prfSalt) } } };
+    data.extensions = { prf: { eval: { first: regState.prfSalt } } };
     // An authenticator only releases PRF output for a verified user, so
     // verification has to be required or the extension is silently skipped.
     data.authenticatorSelection = data.authenticatorSelection || {};
     data.authenticatorSelection.userVerification = 'required';
 
-    const credential = await navigator.credentials.create({ publicKey: data });
+    let credential;
+    try {
+      credential = await navigator.credentials.create({ publicKey: data });
+    } catch (createErr) {
+      if (data.extensions && data.extensions.prf && (createErr.name === 'NotSupportedError' || createErr.name === 'ConstraintError')) {
+        delete data.extensions.prf;
+        credential = await navigator.credentials.create({ publicKey: data });
+      } else {
+        throw createErr;
+      }
+    }
     const attResp = credential.response;
 
     try {
       const prfResult = credential.getClientExtensionResults();
       if (prfResult && prfResult.prf && prfResult.prf.results && prfResult.prf.results.first) {
-        regState.prfOutput = b64url2ab(prfResult.prf.results.first);
+        const rawPrf = prfResult.prf.results.first;
+        regState.prfOutput = (rawPrf instanceof ArrayBuffer || ArrayBuffer.isView(rawPrf))
+          ? rawPrf
+          : b64url2ab(rawPrf);
       }
     } catch (e) { /* PRF unsupported — falls back to passphrase or recovery */ }
 

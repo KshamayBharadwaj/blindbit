@@ -380,18 +380,31 @@ async function createDevicePasskey() {
     // and only mint a new one for an account that has never had PRF.
     var saltHex = options.prf_salt || '';
     addDevicePrfSalt = saltHex ? hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(32));
-    publicKey.extensions = { prf: { eval: { first: b64url(addDevicePrfSalt) } } };
+    publicKey.extensions = { prf: { eval: { first: addDevicePrfSalt } } };
     publicKey.authenticatorSelection = publicKey.authenticatorSelection || {};
     publicKey.authenticatorSelection.userVerification = 'required';
 
-    var credential = await navigator.credentials.create({ publicKey: publicKey });
+    var credential;
+    try {
+      credential = await navigator.credentials.create({ publicKey: publicKey });
+    } catch (createErr) {
+      if (publicKey.extensions && publicKey.extensions.prf && (createErr.name === 'NotSupportedError' || createErr.name === 'ConstraintError')) {
+        delete publicKey.extensions.prf;
+        credential = await navigator.credentials.create({ publicKey: publicKey });
+      } else {
+        throw createErr;
+      }
+    }
     var attResp = credential.response;
 
     var prfOutput = null;
     try {
       var ext = credential.getClientExtensionResults();
       if (ext && ext.prf && ext.prf.results && ext.prf.results.first) {
-        prfOutput = b642ab(ext.prf.results.first);
+        var rawPrf = ext.prf.results.first;
+        prfOutput = (rawPrf instanceof ArrayBuffer || ArrayBuffer.isView(rawPrf))
+          ? rawPrf
+          : b642ab(rawPrf);
       }
     } catch (e) { /* authenticator has no PRF — the device keeps needing the passphrase */ }
 

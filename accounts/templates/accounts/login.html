@@ -370,7 +370,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       if (beginData.prf_enabled && beginData.prf_salt) {
         try {
           prfRequest = { salt: hex2ab(beginData.prf_salt) };
-          beginData.extensions = { prf: { eval: { first: b64url(prfRequest.salt) } } };
+          beginData.extensions = { prf: { eval: { first: prfRequest.salt } } };
         } catch (e) { prfRequest = null; }
       }
 
@@ -378,20 +378,31 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       try {
         assertion = await navigator.credentials.get({ publicKey: beginData });
       } catch (getErr) {
-        var getMsg = 'passkey authentication cancelled or failed. try the passphrase tab.';
-        if (getErr && getErr.name === 'NotAllowedError') {
-          getMsg = 'no matching passkey on this device, or the prompt timed out. use the browser profile where this passkey was created.';
-          if (beginData.credentials_on_other_hosts) {
-            getMsg = 'your passkeys were created on a different address (localhost and 127.0.0.1 are separate passkey realms). open the app at the address you used to create the passkey.';
+        if (beginData.extensions && beginData.extensions.prf && (getErr.name === 'NotSupportedError' || getErr.name === 'ConstraintError')) {
+          delete beginData.extensions.prf;
+          prfRequest = null;
+          try {
+            assertion = await navigator.credentials.get({ publicKey: beginData });
+          } catch (retryErr) {
+            getErr = retryErr;
           }
-        } else if (getErr && getErr.name === 'InvalidStateError') {
-          getMsg = 'this passkey does not match your account.';
         }
-        errorEl.textContent = getMsg;
-        errorEl.classList.remove('hidden');
-        loginBtn.disabled = false;
-        loginBtn.innerHTML = '<span>Authenticate with Passkey</span><svg class="w-4 h-4 stroke-white stroke-[2.5] fill-none flex-shrink-0" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>';
-        return;
+        if (!assertion) {
+          var getMsg = 'passkey authentication cancelled or failed. try the passphrase tab.';
+          if (getErr && getErr.name === 'NotAllowedError') {
+            getMsg = 'no matching passkey on this device, or the prompt timed out. use the browser profile where this passkey was created.';
+            if (beginData.credentials_on_other_hosts) {
+              getMsg = 'your passkeys were created on a different address (localhost and 127.0.0.1 are separate passkey realms). open the app at the address you used to create the passkey.';
+            }
+          } else if (getErr && getErr.name === 'InvalidStateError') {
+            getMsg = 'this passkey does not match your account.';
+          }
+          errorEl.textContent = getMsg;
+          errorEl.classList.remove('hidden');
+          loginBtn.disabled = false;
+          loginBtn.innerHTML = '<span>Authenticate with Passkey</span><svg class="w-4 h-4 stroke-white stroke-[2.5] fill-none flex-shrink-0" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>';
+          return;
+        }
       }
 
       var assertResp = assertion.response;
@@ -420,7 +431,10 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             try {
               const prfResult = assertion.getClientExtensionResults();
               if (prfResult && prfResult.prf && prfResult.prf.results && prfResult.prf.results.first) {
-                const prfOutput = b64url2ab(prfResult.prf.results.first);
+                const rawPrf = prfResult.prf.results.first;
+                const prfOutput = (rawPrf instanceof ArrayBuffer || ArrayBuffer.isView(rawPrf))
+                  ? rawPrf
+                  : b64url2ab(rawPrf);
                 const prfWrappingKey = await derivePrfWrappingKey(prfRequest.salt, prfOutput);
                 const mk = await BlindBitCrypto.unwrapKey(prfWrappingKey, completeData.wrapped_master_key);
                 if (mk) {
