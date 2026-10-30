@@ -202,6 +202,7 @@ UNFOLD = {
                 "collapsible": True,
                 "items": [
                     {"title": "Encrypted Files", "icon": "folder", "link": "/admin/vault/encryptedfile/"},
+                    {"title": "Folders", "icon": "folder_shared", "link": "/admin/vault/vaultfolder/"},
                 ],
             },
             {

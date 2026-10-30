@@ -1,7 +1,21 @@
 from unfold.admin import ModelAdmin
 from unfold.decorators import display, action
 from django.contrib import admin
-from .models import EncryptedFile, UploadSession, FileChunk
+from .models import EncryptedFile, VaultFolder, UploadSession, FileChunk
+
+
+@admin.register(VaultFolder)
+class VaultFolderAdmin(ModelAdmin):
+    list_display = ['name', 'display_owner', 'is_favorites', 'created_at']
+    list_filter = ['is_favorites', 'created_at']
+    search_fields = ['name', 'owner__username', 'owner__email']
+    ordering = ['name']
+    readonly_fields = ['id', 'created_at']
+    raw_id_fields = ['owner']
+
+    @display(description='Owner', ordering='owner__username')
+    def display_owner(self, obj):
+        return obj.owner.username
 
 
 @admin.register(EncryptedFile)
